@@ -3,6 +3,13 @@ import 'package:projek_akhir/auth/auth_gate.dart';
 import 'package:projek_akhir/auth/auth_service.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
 import 'package:projek_akhir/services/vendor_service.dart';
+import 'package:projek_akhir/pages/vendor_detail_page.dart';
+import 'package:projek_akhir/pages/search_page.dart';
+import 'package:projek_akhir/pages/chat_page.dart';
+import 'package:projek_akhir/pages/converter_page.dart';
+import 'package:projek_akhir/pages/features_page.dart';
+import 'package:projek_akhir/pages/budget_estimator_page.dart';
+import 'package:projek_akhir/pages/notification_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,32 +19,106 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final authService = AuthService();
-  final vendorService = VendorService();
+  final _authService = AuthService();
+  final _vendorService = VendorService();
 
-  List<VendorModel> vendors = [];
-  bool isLoading = true;
+  List<VendorModel> _vendors = [];
+  bool _isLoading = true;
+
+  final DateTime _today = DateTime.now();
+
+  // ── Kalender Jawa ──────────────────────────────────────────
+  static const List<String> _pasaran = [
+    'Kliwon', 'Legi', 'Pahing', 'Pon', 'Wage'
+  ];
+  static const List<String> _hariJawa = [
+    'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'
+  ];
+  static const List<String> _bulanMasehi = [
+    '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  static const List<String> _bulanHijriyah = [
+    '', 'Muharram', 'Safar', 'Rabi\'ul Awal', 'Rabi\'ul Akhir',
+    'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban',
+    'Ramadhan', 'Syawwal', 'Dzulqa\'dah', 'Dzulhijjah'
+  ];
+
+  String get _pasaranHariIni {
+    final base = DateTime(2000, 1, 1); // Sabtu Legi
+    final diff = _today.difference(base).inDays;
+    return _pasaran[diff % 5];
+  }
+
+  String get _hariJawaHariIni => _hariJawa[_today.weekday % 7];
+
+  Map<String, int> get _hijriyah {
+    final jd = _julianDay(_today);
+    const epoch = 1948439.5;
+    final n = ((jd - epoch + 0.5) / 29.53059).floor();
+    int hy = ((n - 1) / 12).floor() + 1;
+    int hm = ((n - 1) % 12) + 1;
+    final ms = _julianDay(_hijriToGreg(hy, hm, 1));
+    int hd = (jd - ms).floor() + 1;
+    if (hd < 1) {
+      hm--;
+      if (hm < 1) { hm = 12; hy--; }
+      hd = 29;
+    }
+    return {'day': hd, 'month': hm, 'year': hy};
+  }
+
+  double _julianDay(DateTime d) {
+    int y = d.year, m = d.month;
+    if (m <= 2) { y--; m += 12; }
+    final a = (y / 100).floor();
+    final b = 2 - a + (a / 4).floor();
+    return (365.25 * (y + 4716)).floor() +
+        (30.6001 * (m + 1)).floor() + d.day + b - 1524.5;
+  }
+
+  DateTime _hijriToGreg(int hy, int hm, int hd) {
+    final n = hd +
+        (29.5001 * (hm - 1)).ceil() +
+        (hy - 1) * 354 +
+        (3 * ((hy - 1) / 30 + 1)).floor() ~/ 1 +
+        1948440 - 385;
+    int j = n + 1402;
+    int k = (j - 1) ~/ 1461 * 4 + 3;
+    final i = ((j - 1) % 1461) ~/ 365;
+    final l = i - (i ~/ 365);
+    final y1 = k ~/ 4 * 100 + l ~/ 36525;
+    final m1 = (l % 36525) ~/ 30 + 1;
+    final d1 = (l % 36525) % 30 + 1;
+    return DateTime(y1, m1, d1);
+  }
+
+  // ── Greeting ───────────────────────────────────────────────
+  String get _greeting {
+    final h = _today.hour;
+    if (h < 11) return 'Selamat pagi';
+    if (h < 15) return 'Selamat siang';
+    if (h < 18) return 'Selamat sore';
+    return 'Selamat malam';
+  }
 
   @override
   void initState() {
     super.initState();
-    fetchVendors();
+    _fetchVendors();
   }
 
-  Future<void> fetchVendors() async {
-    final data = await vendorService.getVendors();
-
+  Future<void> _fetchVendors() async {
+    final data = await _vendorService.getVendors();
     setState(() {
-      vendors = data;
-      isLoading = false;
+      _vendors = data;
+      _isLoading = false;
     });
   }
 
-  void logout() async {
+  void _logout() async {
     try {
-      await authService.signOut();
-      
-      // Optional: force refresh dengan Navigator
+      await _authService.signOut();
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const AuthGate()),
@@ -48,79 +129,443 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _go(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final username = authService.getCurrentUserName() ?? "User";
+    final name = _authService.getCurrentUserName() ?? 'User';
+    final hijri = _hijriyah;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home"),
-        actions: [
-          IconButton(
-            onPressed: logout,
-            icon: const Icon(Icons.logout),
-          )
-        ],
-      ),
+      backgroundColor: const Color(0xfffcf9f8),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Halo, $username',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+
+              // ── 1. HEADER ──────────────────────────────────
+              _buildHeader(name),
+              const SizedBox(height: 24),
+
+              // ── 2. DATE SYNC CARD ──────────────────────────
+              _buildDateCard(hijri),
+              const SizedBox(height: 24),
+
+              // ── 3. AKSI CEPAT ──────────────────────────────
+              const Text('Aksi Cepat',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              _buildQuickActions(),
+              const SizedBox(height: 24),
+
+              // ── 4. VENDOR ──────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Vendor Tersedia',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  GestureDetector(
+                    onTap: () => _go(const SearchPage()),
+                    child: const Text('Lihat semua →',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFFd4af37))),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Daftar Vendor',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
+              const SizedBox(height: 14),
+              _buildVendorList(),
+              const SizedBox(height: 24),
+
+              // ── 5. BANNER FITUR ────────────────────────────
+              _buildFeatureBanner(),
               const SizedBox(height: 16),
-
-              /// 🔹 LIST VENDOR
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Expanded(
-                      child: vendors.isEmpty
-                          ? const Center(child: Text("Belum ada data vendor"))
-                          : ListView.builder(
-                              itemCount: vendors.length,
-                              itemBuilder: (context, index) {
-                                final vendor = vendors[index];
-
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  child: ListTile(
-                                    title: Text(vendor.namaVendor),
-                                    subtitle: Text(vendor.alamat),
-                                    trailing: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          vendor.latitude
-                                              .toStringAsFixed(2),
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                        Text(
-                                          vendor.longitude
-                                              .toStringAsFixed(2),
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // WIDGETS
+  // ──────────────────────────────────────────────────────────
+
+  Widget _buildHeader(String name) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$_greeting,',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            Text(name,
+                style: const TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        Row(
+          children: [
+            // Notifikasi
+            GestureDetector(
+              onTap: () => _go(const NotificationPage()),
+              child: Container(
+                width: 42,
+                height: 42,
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFd4af37).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.notifications_outlined,
+                    color: Color(0xFFd4af37)),
+              ),
+            ),
+            // Logout
+            GestureDetector(
+              onTap: _logout,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.logout,
+                    color: Colors.red, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateCard(Map<String, int> hijri) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C1810), Color(0xFF5C3317)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2C1810).withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Label
+          Row(
+            children: const [
+              Icon(Icons.calendar_today,
+                  color: Color(0xFFd4af37), size: 14),
+              SizedBox(width: 6),
+              Text(
+                'Sinkronisasi Kalender Hari Ini',
+                style: TextStyle(
+                    color: Color(0xFFd4af37),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Masehi — besar
+          Text(
+            '$_hariJawaHariIni, ${_today.day} '
+            '${_bulanMasehi[_today.month]} ${_today.year}',
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold),
+          ),
+
+          const SizedBox(height: 10),
+          Divider(color: Colors.white.withOpacity(0.1), height: 1),
+          const SizedBox(height: 10),
+
+          // Jawa
+          _dateRow('Jawa',
+              '$_hariJawaHariIni $_pasaranHariIni'),
+
+          const SizedBox(height: 6),
+
+          // Hijriyah
+          _dateRow(
+            'Hijriyah',
+            '${hijri['day']} ${_bulanHijriyah[hijri['month']!]} '
+            '${hijri['year']} H',
+          ),
+
+          const SizedBox(height: 12),
+
+          // Badge
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFd4af37).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: const Color(0xFFd4af37).withOpacity(0.4)),
+            ),
+            child: Text(
+              '✨ $_hariJawaHariIni $_pasaranHariIni',
+              style: const TextStyle(
+                  color: Color(0xFFd4af37),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dateRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 60,
+          child: Text(label,
+              style: TextStyle(
+                  color: Colors.white.withOpacity(0.5), fontSize: 12)),
+        ),
+        Text(' : ',
+            style: TextStyle(
+                color: Colors.white.withOpacity(0.3), fontSize: 12)),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions() {
+    final actions = [
+      {
+        'icon': Icons.search,
+        'label': 'Cari Vendor',
+        'page': const SearchPage(),
+      },
+      {
+        'icon': Icons.auto_awesome,
+        'label': 'Bli-AI Guide',
+        'page': const ChatPage(),
+      },
+      {
+        'icon': Icons.currency_exchange,
+        'label': 'Konversi',
+        'page': const ConverterPage(),
+      },
+      {
+        'icon': Icons.calculate_outlined,
+        'label': 'Est. Budget',
+        'page': const BudgetEstimatorPage(),
+      },
+    ];
+
+    return GridView.count(
+      crossAxisCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 10,
+      children: actions.map((a) {
+        return GestureDetector(
+          onTap: () => _go(a['page'] as Widget),
+          child: Column(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFd4af37).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color:
+                          const Color(0xFFd4af37).withOpacity(0.2)),
+                ),
+                child: Icon(a['icon'] as IconData,
+                    color: const Color(0xFFd4af37), size: 24),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                a['label'] as String,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize: 10, color: Colors.grey),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildVendorList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFd4af37)),
+      );
+    }
+
+    if (_vendors.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Center(
+          child: Text('Belum ada vendor',
+              style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 130,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _vendors.length,
+        itemBuilder: (context, i) {
+          final v = _vendors[i];
+          return GestureDetector(
+            onTap: () => _go(VendorDetailPage(vendor: v)),
+            child: Container(
+              width: 155,
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFd4af37)
+                              .withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            v.namaVendor[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFd4af37),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.arrow_forward_ios,
+                          size: 11, color: Colors.grey),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    v.namaVendor,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    v.alamat,
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFeatureBanner() {
+    return GestureDetector(
+      onTap: () => _go(const FeaturesPage()),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFd4af37).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: const Color(0xFFd4af37).withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFd4af37),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(Icons.auto_awesome,
+                  color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Bli-AI, Game & Sensor',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold)),
+                  SizedBox(height: 2),
+                  Text(
+                    'Kuis adat, acak kursi, balance game & lebih',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios,
+                size: 13, color: Color(0xFFd4af37)),
+          ],
         ),
       ),
     );

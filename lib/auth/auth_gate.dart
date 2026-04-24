@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'package:projek_akhir/pages/main_navigation.dart'; // Sesuaikan path folder kamu
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_local.dart';
 import 'package:projek_akhir/pages/home_page.dart';
@@ -96,11 +96,12 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFd4af37))),
       );
     }
 
-    return isAuthenticated ? const HomePage() : const LoginPage();
+    // UBAH HomePage() MENJADI MainNavigation() 👇
+    return isAuthenticated ? const MainNavigation() : const LoginPage();
   }
 
   @override
