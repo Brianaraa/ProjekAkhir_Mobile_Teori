@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/home_page.dart';
 import 'package:projek_akhir/pages/profile_page.dart';
-import 'package:projek_akhir/pages/map_page.dart';
-import 'package:projek_akhir/pages/seating_page.dart';
-// import 'package:projek_akhir/pages/features_page.dart';
-// import 'package:projek_akhir/pages/notification_page.dart';
-// import 'package:projek_akhir/pages/search_page.dart';
+import 'package:projek_akhir/pages/search_page.dart';
 
 
 class MainNavigation extends StatefulWidget {
@@ -19,12 +15,12 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
 
-  // Tambah halaman lain nanti saat Si A selesai modul masing-masing
+  // Pages harus sinkron 1:1 dengan nav items di bawah
   final List<Widget> _pages = [
-    const HomePage(),
-    const MapPage(),
-    const SeatingPage(),
-    const ProfilePage(),
+    const HomePage(),      // 0 → Beranda
+    const SearchPage(),    // 1 → Eksplor
+    const ConverterPage(), // 2 → Konversi
+    const ProfilePage(),   // 3 → Profil
   ];
 
   @override
@@ -38,14 +34,13 @@ class _MainNavigationState extends State<MainNavigation> {
         unselectedItemColor: Colors.grey,
         backgroundColor: Colors.white,
         elevation: 8,
-        type: BottomNavigationBarType.fixed, // Tetap fixed agar muat 4 item
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Beranda',
           ),
-          // 2. Tambahkan Item Navigasi Baru untuk Fitur Interaktif
           BottomNavigationBarItem(
             icon: Icon(Icons.explore_outlined),
             activeIcon: Icon(Icons.explore),

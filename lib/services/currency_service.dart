@@ -1,22 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // Tambahkan import ini
 import 'package:projek_akhir/models/currency_model.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CurrencyService {
-  static final String _apiKey = dotenv.env['EXCHANGERATE_API_KEY'] ?? '';
-  static String get _baseUrl =>
-      'https://v6.exchangerate-api.com/v6/$_apiKey/latest/IDR';
+  // Ambil API Key dan Base URL dari .env atau definisikan secara dinamis
+  final String _apiKey = dotenv.env['CURRENCY_API_KEY'] ?? '';
+  
+  // URL untuk mengambil rate terbaru dengan base IDR (Rupiah)
+  String get _baseUrl => 'https://v6.exchangerate-api.com/v6/$_apiKey/latest/IDR';
 
-  // Mata uang wajib TPM: min 3, kita pakai 4
+  // Mata uang wajib TPM: minimal 3, di sini kita sediakan 4
   static const Map<String, String> targetCurrencies = {
-    'MYR': 'Ringgit Malaysia',
-    'SAR': 'Riyal Arab Saudi',
-    'USD': 'Dolar Amerika',
-    'SGD': 'Dolar Singapura',
+    'MYR': 'Ringgit Malaysia', // Relevan untuk TKI/Keluarga di Malaysia
+    'SAR': 'Riyal Arab Saudi',  // Relevan untuk konteks Haji/Hijriyah
+    'USD': 'Dolar Amerika',    // Global standar
+    'SGD': 'Dolar Singapura',  // Tetangga terdekat
   };
 
   Future<List<CurrencyModel>> getRates() async {
+    if (_apiKey.isEmpty) {
+      throw Exception('API Key mata uang belum diatur di .env');
+    }
+
     try {
       final response = await http.get(Uri.parse(_baseUrl))
           .timeout(const Duration(seconds: 10));
@@ -25,14 +31,16 @@ class CurrencyService {
         final data = jsonDecode(response.body);
         final rates = data['conversion_rates'] as Map<String, dynamic>;
 
+        // Mapping hasil API ke model data kita
         return targetCurrencies.entries
             .map((e) => CurrencyModel.fromApiJson(rates, e.key, e.value))
             .toList();
+      } else {
+        throw Exception('Gagal memuat kurs: ${response.statusCode}');
       }
-      throw Exception('Failed to load rates: ${response.statusCode}');
     } catch (e) {
-      print('CurrencyService error: $e');
-      rethrow;
+      print('CurrencyService Error: $e');
+      return []; // Kembalikan list kosong jika error
     }
   }
 }

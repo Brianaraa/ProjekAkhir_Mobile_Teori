@@ -12,6 +12,7 @@ import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/features_page.dart';
 import 'package:projek_akhir/pages/budget_estimator_page.dart';
 import 'package:projek_akhir/pages/notification_page.dart';
+import 'package:projek_akhir/pages/map_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
@@ -530,6 +531,11 @@ class _HomePageState extends State<HomePage> {
         'page': const ChatPage(),
       },
       {
+        'icon': Icons.map_outlined,
+        'label': 'Peta Vendor',
+        'page': const MapPage(),
+      },
+      {
         'icon': Icons.currency_exchange,
         'label': 'Konversi',
         'page': const ConverterPage(),
@@ -542,10 +548,10 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: 5,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 10,
+      crossAxisSpacing: 6,
       children: actions.map((a) {
         return GestureDetector(
           onTap: () => 
@@ -558,24 +564,23 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             children: [
               Container(
-                width: 54,
-                height: 54,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   color: const Color(0xFFd4af37).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color:
-                          const Color(0xFFd4af37).withOpacity(0.2)),
+                      color: const Color(0xFFd4af37).withOpacity(0.2)),
                 ),
                 child: Icon(a['icon'] as IconData,
-                    color: const Color(0xFFd4af37), size: 24),
+                    color: const Color(0xFFd4af37), size: 22),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Text(
                 a['label'] as String,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                    fontSize: 10, color: Colors.grey),
+                    fontSize: 9, color: Colors.grey),
                 maxLines: 2,
               ),
             ],

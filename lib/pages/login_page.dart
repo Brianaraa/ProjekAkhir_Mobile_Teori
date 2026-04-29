@@ -64,6 +64,7 @@ class _LoginPageState extends State<LoginPage> {
       final expiredAt = DateTime.now().add(const Duration(hours: 24));
       await AuthStorage.saveSession(token: token, expiredAt: expiredAt);
 
+
       // Jika berhasil, AuthGate akan otomatis redirect ke HomePage
       if (mounted) {
         Navigator.pushAndRemoveUntil(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
 import 'package:projek_akhir/services/notification_service.dart';
+import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -250,95 +251,101 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _vendorCard(VendorModel vendor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          )
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => VendorDetailPage(vendor: vendor)),
       ),
-      child: Row(
-        children: [
-          // Avatar initial
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFd4af37).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Text(
-                vendor.namaVendor.isNotEmpty
-                    ? vendor.namaVendor[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFd4af37),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Info vendor
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vendor.namaVendor,
-                  style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  vendor.alamat,
-                  style:
-                      const TextStyle(fontSize: 12, color: Colors.grey),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  vendor.deksripsi,
-                  style: TextStyle(
-                      fontSize: 12, color: Colors.grey[500]),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Tombol simpan
-          GestureDetector(
-            onTap: () => _saveVendor(vendor),
-            child: Container(
-              padding: const EdgeInsets.all(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            // Avatar initial
+            Container(
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFFd4af37).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFFd4af37).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.bookmark_add_outlined,
-                color: Color(0xFFd4af37),
-                size: 22,
+              child: Center(
+                child: Text(
+                  vendor.namaVendor.isNotEmpty
+                      ? vendor.namaVendor[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFd4af37),
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(width: 12),
+
+            // Info vendor
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vendor.namaVendor,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    vendor.alamat,
+                    style:
+                        const TextStyle(fontSize: 12, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    vendor.deksripsi,
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.grey[500]),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 8),
+
+            // Tombol simpan
+            GestureDetector(
+              onTap: () => _saveVendor(vendor),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFd4af37).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.bookmark_add_outlined,
+                  color: Color(0xFFd4af37),
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
