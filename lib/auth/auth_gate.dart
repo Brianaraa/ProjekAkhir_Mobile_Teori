@@ -1,10 +1,11 @@
-import 'dart:async';
-import 'package:projek_akhir/pages/main_navigation.dart'; // Sesuaikan path folder kamu
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/auth/auth_local.dart';
-import 'package:projek_akhir/pages/home_page.dart';
+import 'package:projek_akhir/auth/auth_storage.dart';
 import 'package:projek_akhir/pages/login_page.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:projek_akhir/pages/main_navigation.dart';   // ← Tambahkan import ini
+
+Future<bool> checkSession() async {
+  return await AuthStorage.isSessionValid();
+}
 
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
@@ -14,99 +15,49 @@ class AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<AuthGate> {
-  final biometricService = BiometricService();
-  late final StreamSubscription<AuthState> authListener;
-
-  bool isLoading = true;
-  bool isAuthenticated = false;
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _checkInitialAuth(); // Cek pertama kali
-
-    // Listener auth state change
-    authListener = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (data) async {
-        final event = data.event;
-
-        print('Auth event: $event'); // Untuk debugging
-
-        if (event == AuthChangeEvent.signedOut) {
-          if (!mounted) return;
-          
-          setState(() {
-            isAuthenticated = false;
-            isLoading = false;
-          });
-        } 
-        else if (event == AuthChangeEvent.signedIn) {
-          if (!mounted) return;
-          await _checkAuthAfterSignIn(); // Cek biometric jika perlu
-        }
-      },
-    );
+    _checkSession();
   }
 
-  // Cek auth saat pertama kali aplikasi dibuka
-  Future<void> _checkInitialAuth() async {
-    final session = Supabase.instance.client.auth.currentSession;
+  Future<void> _checkSession() async {
+    final isValid = await AuthStorage.isSessionValid();
 
-    if (session != null) {
-      await _handleAuthenticatedSession();
-    } else {
-      _setUnauthenticated();
+    if (isValid) {
+      final currentToken = await AuthStorage.getToken();
+      
+      if (currentToken != null) {
+        final newExpiry = DateTime.now().add(const Duration(hours: 24));
+        
+        await AuthStorage.saveSession(
+          token: currentToken, 
+          expiredAt: newExpiry
+        );
+        print('🔄 Sesi diperpanjang sampai: $newExpiry');
+      }
     }
-  }
 
-  // Dipanggil saat user baru sign in
-  Future<void> _checkAuthAfterSignIn() async {
-    await _handleAuthenticatedSession();
-  }
-
-  Future<void> _handleAuthenticatedSession() async {
-    bool canUseBio = await biometricService.isBiometricAvailable();
-
-    if (canUseBio) {
-      bool success = await biometricService.authenticate();
-      if (!mounted) return;
-
+    if (mounted) {
       setState(() {
-        isAuthenticated = success;
-        isLoading = false;
-      });
-    } else {
-      if (!mounted) return;
-      setState(() {
-        isAuthenticated = true;
-        isLoading = false;
+        _isLoggedIn = isValid;
+        _isLoading = false;
       });
     }
-  }
-
-  void _setUnauthenticated() {
-    if (!mounted) return;
-    setState(() {
-      isAuthenticated = false;
-      isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFd4af37))),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
-
-    // UBAH HomePage() MENJADI MainNavigation() 👇
-    return isAuthenticated ? const MainNavigation() : const LoginPage();
-  }
-
-  @override
-  void dispose() {
-    authListener.cancel();
-    super.dispose();
+    
+    // PERUBAHAN UTAMA DI SINI:
+    return _isLoggedIn ? const MainNavigation() : const LoginPage();
   }
 }

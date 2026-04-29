@@ -379,33 +379,6 @@ class _MapPageState extends State<MapPage> {
 
           Row(
             children: [
-              // Koordinat
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xfff6f3f2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.my_location,
-                          size: 16, color: Color(0xFFd4af37)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${vendor.latitude.toStringAsFixed(4)},\n${vendor.longitude.toStringAsFixed(4)}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontSize: 10, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 10),
-
-              // Tombol lihat detail
               Expanded(
                 flex: 3,
                 child: ElevatedButton(

@@ -109,13 +109,23 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfffcf9f8),
+        appBar: AppBar(
+          backgroundColor:  const Color(0xfffcf9f8),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── HEADER ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

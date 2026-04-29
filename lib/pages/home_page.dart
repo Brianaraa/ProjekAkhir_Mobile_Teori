@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_gate.dart';
-import 'package:projek_akhir/auth/auth_service.dart';
+import 'package:projek_akhir/auth/auth_storage.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
+import 'package:projek_akhir/pages/login_page.dart';
+import 'package:projek_akhir/services/user_service.dart';
 import 'package:projek_akhir/services/vendor_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:projek_akhir/pages/search_page.dart';
@@ -10,6 +12,7 @@ import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/features_page.dart';
 import 'package:projek_akhir/pages/budget_estimator_page.dart';
 import 'package:projek_akhir/pages/notification_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,13 +22,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _authService = AuthService();
   final _vendorService = VendorService();
 
   List<VendorModel> _vendors = [];
   bool _isLoading = true;
+  String _userName = 'User';
 
   final DateTime _today = DateTime.now();
+
+  
 
   // ── Kalender Jawa ──────────────────────────────────────────
   static const List<String> _pasaran = [
@@ -106,6 +111,32 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _fetchVendors();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final uuid = prefs.getString('user_id');
+
+      if (uuid == null || uuid.isEmpty) {
+        setState(() => _userName = 'User');
+        return;
+      }
+
+      final name = await UserService.getUserNameByUuid(uuid);
+
+      if (mounted) {
+        setState(() {
+          _userName = name ?? 'User';
+        });
+      }
+    } catch (e) {
+      print('Error load user name: $e');
+      if (mounted) {
+        setState(() => _userName = 'User');
+      }
+    }
   }
 
   Future<void> _fetchVendors() async {
@@ -118,10 +149,13 @@ class _HomePageState extends State<HomePage> {
 
   void _logout() async {
     try {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AuthGate()),
+      await AuthStorage.deleteSession();
+      await UserService.logout();        // ← TAMBAHKAN INI
+
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),  // LoginPage, bukan AuthGate
+          (route) => false,
         );
       }
     } catch (e) {
@@ -135,7 +169,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final name = _authService.getCurrentUserName() ?? 'User';
+    final name = _userName;
     final hijri = _hijriyah;
 
     return Scaffold(
@@ -163,6 +197,34 @@ class _HomePageState extends State<HomePage> {
               _buildQuickActions(),
               const SizedBox(height: 24),
 
+              // ── 5. Hajatan mendatang ────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Hajatan Mendatang',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _go(const FeaturesPage()), // atau halaman daftar hajatan
+                    child: const Text(
+                      'Lihat Semua',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFFd4af37),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildUpcomingHajatan(),
+              const SizedBox(height: 24),
+
               // ── 4. VENDOR ──────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -182,7 +244,7 @@ class _HomePageState extends State<HomePage> {
               _buildVendorList(),
               const SizedBox(height: 24),
 
-              // ── 5. BANNER FITUR ────────────────────────────
+            // ── 5. BANNER FITUR ────────────────────────────
               _buildFeatureBanner(),
               const SizedBox(height: 16),
             ],
@@ -359,6 +421,102 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildUpcomingHajatan() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () {
+            // TODO: Navigasi ke detail hajatan
+            print('Buka detail Pernikahan Adit & Sari');
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Judul Hajatan
+                const Text(
+                  'Pernikahan Adit & Sari',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Tanggal
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today,
+                        size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '12 Juni 2026',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Progress Persiapan
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Persiapan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Text(
+                      '65%',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFd4af37),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Progress Bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: 0.65,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFd4af37),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildQuickActions() {
     final actions = [
       {
@@ -390,7 +548,13 @@ class _HomePageState extends State<HomePage> {
       crossAxisSpacing: 10,
       children: actions.map((a) {
         return GestureDetector(
-          onTap: () => _go(a['page'] as Widget),
+          onTap: () => 
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => a['page'] as Widget,
+              ),
+            ),
           child: Column(
             children: [
               Container(

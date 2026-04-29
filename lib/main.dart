@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_gate.dart';
+import 'package:projek_akhir/utils/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:projek_akhir/services/notification_service.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -27,8 +28,9 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
       home: AuthGate(),
     );
   }

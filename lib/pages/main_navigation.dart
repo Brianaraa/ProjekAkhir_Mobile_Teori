@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/home_page.dart';
 import 'package:projek_akhir/pages/profile_page.dart';
-import 'package:projek_akhir/pages/features_page.dart';
 import 'package:projek_akhir/pages/map_page.dart';
-import 'package:projek_akhir/pages/notification_page.dart';
-import 'package:projek_akhir/pages/search_page.dart';
+import 'package:projek_akhir/pages/seating_page.dart';
+// import 'package:projek_akhir/pages/features_page.dart';
+// import 'package:projek_akhir/pages/notification_page.dart';
+// import 'package:projek_akhir/pages/search_page.dart';
 
 
 class MainNavigation extends StatefulWidget {
@@ -21,11 +22,8 @@ class _MainNavigationState extends State<MainNavigation> {
   // Tambah halaman lain nanti saat Si A selesai modul masing-masing
   final List<Widget> _pages = [
     const HomePage(),
-    const SearchPage(),
-    const MapPage(),        
-    const FeaturesPage(),
-    const ConverterPage(),
-    const NotificationPage(),
+    const MapPage(),
+    const SeatingPage(),
     const ProfilePage(),
   ];
 

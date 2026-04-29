@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/auth/auth_service.dart';
+import 'package:projek_akhir/auth/auth_gate.dart';
+import 'package:projek_akhir/auth/auth_storage.dart';
 import 'package:projek_akhir/pages/sign_up.dart';
+import 'package:projek_akhir/services/user_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
@@ -11,14 +14,17 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final authService = AuthService();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  bool _isVisible = false;
+  bool _isLoading = false;
+
   void login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -30,14 +36,47 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    setState(() => _isLoading = true);   // Tambahkan ini agar tombol tidak bisa diklik 2x
+
     try {
-      await authService.signInWithEmailPassword(email, password);
-      // Jika berhasil, AuthGate akan otomatis berpindah ke HomePage
+      final userService = UserService();
+      final result = await userService.login(email, password);
+
+      if (result == null) {
+        throw Exception('Email atau password salah');
+      }
+
+      // Simpan nama user
+      final user = result['user'] as Map<String, dynamic>;
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // ✅ SIMPAN SEMUA DATA USER
+      await prefs.setString('user_id', user['uuid']);   // penting untuk update
+      await prefs.setString('nama', user['nama']);
+      await prefs.setString('email', user['email']);
+
+      await UserService.saveCurrentUserName(user['nama']);
+      
+
+      // Simpan session
+      final token = result['token'] as String;
+      final expiredAt = DateTime.now().add(const Duration(hours: 24));
+      await AuthStorage.saveSession(token: token, expiredAt: expiredAt);
+
+      // Jika berhasil, AuthGate akan otomatis redirect ke HomePage
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthGate()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       String errorMessage = 'Terjadi kesalahan';
 
-      if (e is AuthException) {
-        errorMessage = e.message;
+      if (e.toString().contains('salah')) {
+        errorMessage = 'Email atau password salah';
       } else if (e.toString().contains('SocketException')) {
         errorMessage = 'Tidak bisa terhubung ke server';
       } else {
@@ -53,7 +92,8 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
-      print("ERROR AUTH: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -140,6 +180,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
+                SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -163,7 +205,7 @@ class _LoginPageState extends State<LoginPage> {
                         "Daftar",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
+                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -181,9 +223,11 @@ class _LoginPageState extends State<LoginPage> {
     return TextField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
+      
       decoration: InputDecoration(
         hintText: 'nama@gmail.com',
         hintStyle: const TextStyle(color: Colors.grey),
+
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
         ),
@@ -206,10 +250,15 @@ class _LoginPageState extends State<LoginPage> {
   Widget _passwordField() {
     return TextField(
       controller: _passwordController,
-      obscureText: true,
+      obscureText: !_isVisible,
+      enabled: !_isLoading,
+      
       decoration: InputDecoration(
         hintText: '********',
         hintStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
         ),
@@ -223,7 +272,25 @@ class _LoginPageState extends State<LoginPage> {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
         ),
+
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(left: 20, right: 10),
+          child: IconButton(
+            icon: Icon(
+              _isVisible ? Icons.visibility : Icons.visibility_off,
+              color: Colors.grey,
+            ),
+            onPressed: _isLoading
+                ? null
+                : () {
+                    setState(() {
+                      _isVisible = !_isVisible;
+                    });
+                  },
+          ),
+        ),
       ),
     );
   }
