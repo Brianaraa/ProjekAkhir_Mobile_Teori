@@ -464,9 +464,9 @@ class _HomePageState extends State<HomePage> {
                     const Icon(Icons.calendar_today,
                         size: 18, color: Colors.grey),
                     const SizedBox(width: 8),
-                    const Text(
-                      '12 Juni 2026',
-                      style: TextStyle(
+                    Text(
+                      '${_today.add(const Duration(days: 14)).day} ${_bulanMasehi[_today.add(const Duration(days: 14)).month]} ${_today.add(const Duration(days: 14)).year}',
+                      style: const TextStyle(
                         fontSize: 15,
                         color: Colors.grey,
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:projek_akhir/models/currency_model.dart';
 import 'package:projek_akhir/services/currency_service.dart';
 import 'package:projek_akhir/widgets/currency_card.dart';
@@ -12,6 +13,36 @@ class ConverterPage extends StatefulWidget {
   @override
   State<ConverterPage> createState() => _ConverterPageState();
 }
+
+class _CurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    // Hanya angka
+    String cleanString = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanString.isEmpty) return newValue.copyWith(text: '');
+
+    String result = '';
+    int count = 0;
+    for (int i = cleanString.length - 1; i >= 0; i--) {
+      result = cleanString[i] + result;
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        result = '.$result';
+      }
+    }
+
+    return TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(offset: result.length),
+    );
+  }
+}
+
 
 class _ConverterPageState extends State<ConverterPage>
     with SingleTickerProviderStateMixin {
@@ -342,6 +373,7 @@ class _ConverterPageState extends State<ConverterPage>
     return TextField(
       controller: _nominalController,
       keyboardType: TextInputType.number,
+      inputFormatters: [_CurrencyInputFormatter()],
       decoration: InputDecoration(
         hintText: 'Contoh: 1000000',
         hintStyle: const TextStyle(color: Colors.grey),

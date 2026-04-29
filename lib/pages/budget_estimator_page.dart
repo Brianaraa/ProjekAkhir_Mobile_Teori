@@ -74,14 +74,17 @@ class _BudgetEstimatorPageState extends State<BudgetEstimatorPage> {
   }
 
   String _formatRupiah(int amount) {
-    if (amount >= 1000000000) {
-      return 'Rp ${(amount / 1000000000).toStringAsFixed(1)} M';
-    } else if (amount >= 1000000) {
-      return 'Rp ${(amount / 1000000).toStringAsFixed(1)} jt';
-    } else if (amount >= 1000) {
-      return 'Rp ${(amount / 1000).toStringAsFixed(0)} rb';
+    String str = amount.toString();
+    String result = '';
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      result = str[i] + result;
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        result = '.$result';
+      }
     }
-    return 'Rp $amount';
+    return 'Rp $result';
   }
 
   int get _totalEstimasi =>

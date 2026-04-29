@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:projek_akhir/models/vendor_models.dart';
 import 'package:projek_akhir/services/notification_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -21,6 +21,7 @@ class _SearchPageState extends State<SearchPage> {
   List<VendorModel> _filtered = [];
   bool _isLoading = true;
   String _query = '';
+  Timer? _debounce;
 
   // Filter chip yang aktif
   String _activeFilter = 'Semua';
@@ -58,9 +59,14 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _query = _searchController.text.toLowerCase();
-      _applyFilter();
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _query = _searchController.text.toLowerCase();
+          _applyFilter();
+        });
+      }
     });
   }
 
@@ -368,6 +374,7 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }

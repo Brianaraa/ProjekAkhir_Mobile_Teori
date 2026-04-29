@@ -62,7 +62,7 @@ class _BalanceGamePageState extends State<BalanceGamePage> {
 
         // Cek apakah terlalu miring
         if (_tiltAngle.abs() > _tolerance) {
-          _trayPosition = _tiltAngle * 30;
+          _trayPosition = (_tiltAngle * 40).clamp(-80.0, 80.0);
         } else {
           // Auto-balance perlahan jika dalam toleransi
           _tiltAngle *= 0.95;

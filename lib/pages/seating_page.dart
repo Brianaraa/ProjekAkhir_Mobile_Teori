@@ -27,7 +27,7 @@ class _SeatingPageState extends State<SeatingPage> {
 
   // Threshold guncangan
   static const double _shakeThreshold = 15.0;
-  static const int _shakeCooldown = 1000; // ms
+  static const int _shakeCooldown = 2000; // ms
 
   @override
   void initState() {
