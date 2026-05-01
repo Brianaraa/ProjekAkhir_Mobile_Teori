@@ -4,7 +4,6 @@ import 'package:projek_akhir/auth/auth_storage.dart';
 import 'package:projek_akhir/pages/sign_up.dart';
 import 'package:projek_akhir/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,8 +35,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() => _isLoading = true);   // Tambahkan ini agar tombol tidak bisa diklik 2x
-
+    setState(() => _isLoading = true); 
     try {
       final userService = UserService();
       final result = await userService.login(email, password);
@@ -51,21 +49,16 @@ class _LoginPageState extends State<LoginPage> {
 
       final prefs = await SharedPreferences.getInstance();
 
-      // ✅ SIMPAN SEMUA DATA USER
-      await prefs.setString('user_id', user['uuid']);   // penting untuk update
+      await prefs.setString('user_id', user['uuid']);
       await prefs.setString('nama', user['nama']);
       await prefs.setString('email', user['email']);
 
       await UserService.saveCurrentUserName(user['nama']);
-      
 
-      // Simpan session
       final token = result['token'] as String;
       final expiredAt = DateTime.now().add(const Duration(hours: 24));
       await AuthStorage.saveSession(token: token, expiredAt: expiredAt);
 
-
-      // Jika berhasil, AuthGate akan otomatis redirect ke HomePage
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -117,6 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                   "Selamat Datang",
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
                 ),
+
                 const SizedBox(height: 8),
                 Text(
                   "Silakan masuk untuk melanjutkan perjalanan Anda.",
@@ -125,7 +119,6 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 50),
 
-                // === KOTAK FORM DENGAN BACKGROUND ===
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -135,11 +128,12 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Email
+                      // email
                       const Text(
                         "Alamat Email",
                         style: TextStyle(fontSize: 13, color: Color(0xff000000), fontWeight: FontWeight.bold),
                       ),
+
                       const SizedBox(height: 8),
                       _emailField(),
 
@@ -155,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 32),
 
-                      // Tombol Login
                       ElevatedButton(
                         onPressed: login,
                         style: ElevatedButton.styleFrom(

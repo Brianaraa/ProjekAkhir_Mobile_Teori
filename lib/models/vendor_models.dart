@@ -1,36 +1,42 @@
 class VendorModel {
-  final String id;
+  final String uuid;                
   final String namaVendor;
-  final String deksripsi;
+  final String deskripsi;
   final String alamat;
   final String sosmed;
   final double longitude;
   final double latitude;
 
-  VendorModel({required this.id, required this.namaVendor, required this.deksripsi, required this.alamat, required this.sosmed, required this.longitude, required this.latitude});
+  // Rating fields
+  final double? ratingAvg;
+  final int? ratingCount;
+  final double? ratingTotal;
 
-  // read data
+  VendorModel({
+    required this.uuid,
+    required this.namaVendor,
+    required this.deskripsi,
+    required this.alamat,
+    required this.sosmed,
+    required this.longitude,
+    required this.latitude,
+    this.ratingAvg,
+    this.ratingCount,
+    this.ratingTotal,
+  });
+
   factory VendorModel.fromJson(Map<String, dynamic> json) {
     return VendorModel(
-      id: json['id'],
-      namaVendor: json['nama_vendor'],
-      deksripsi: json['deskripsi'],
-      alamat: json['alamat'],
-      sosmed: json['sosmed'],
-      longitude: json['longitude'],
-      latitude: json['latitude']
+      uuid: json['id'] ?? json['uuid'] ?? '',
+      namaVendor: json['nama_vendor'] ?? 'Tanpa Nama',
+      deskripsi: json['deskripsi'] ?? '',
+      alamat: json['alamat'] ?? '',
+      sosmed: json['sosmed'] ?? '',
+      longitude: (json['longitude'] ?? 0).toDouble(),
+      latitude: (json['latitude'] ?? 0).toDouble(),
+      ratingAvg: json['rating_avg'] != null ? (json['rating_avg']).toDouble() : null,
+      ratingCount: json['rating_count'] as int?,
+      ratingTotal: json['rating_total'] != null ? (json['rating_total']).toDouble() : null,
     );
   }
-
-  // insert data tapi belom kepake
-  // Map<String, dynamic> toMap() {
-  //   return {
-  //     'nama_vendor': namaVendor,
-  //     'deskripsi': deksripsi,
-  //     'alamat': alamat,
-  //     'sosmed': sosmed,
-  //     'longitude': longitude,
-  //     'latitude': latitude
-  //   };
-  // }
 }

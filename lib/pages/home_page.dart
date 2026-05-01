@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/auth/auth_gate.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
+import 'package:projek_akhir/models/countdown_model.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
+import 'package:projek_akhir/pages/countdown_page.dart';
 import 'package:projek_akhir/pages/login_page.dart';
+import 'package:projek_akhir/services/countdown_service.dart';
 import 'package:projek_akhir/services/user_service.dart';
 import 'package:projek_akhir/services/vendor_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
@@ -11,7 +13,6 @@ import 'package:projek_akhir/pages/chat_page.dart';
 import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/features_page.dart';
 import 'package:projek_akhir/pages/budget_estimator_page.dart';
-import 'package:projek_akhir/pages/notification_page.dart';
 import 'package:projek_akhir/pages/map_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _vendorService = VendorService();
+  final _countdownService = CountdownService();
+
+  List<CountdownModel> _upcomingCountdowns = []; //simpen yang sudah difilrer
+  bool _isLoadingCountdown = true;
 
   List<VendorModel> _vendors = [];
   bool _isLoading = true;
@@ -113,6 +118,29 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _fetchVendors();
     _loadUserName();
+    _fetchMyCountdowns();
+  }
+
+  Future<void> _fetchMyCountdowns() async {
+    try {
+      setState(() => _isLoadingCountdown = true);
+
+      final data = await _countdownService.getMyCountdowns();
+
+      // Karena service sudah difilter, tidak perlu filter lagi
+      data.sort((a, b) => a.tanggal.compareTo(b.tanggal)); // pastikan terurut
+
+      setState(() {
+        _upcomingCountdowns = data;     // Langsung pakai
+        _isLoadingCountdown = false;
+      });
+    } catch (e) {
+      print('Error fetch countdowns: $e');
+      setState(() {
+        _upcomingCountdowns = [];
+        _isLoadingCountdown = false;
+      });
+    }
   }
 
   Future<void> _loadUserName() async {
@@ -210,7 +238,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => _go(const FeaturesPage()), // atau halaman daftar hajatan
+                    onTap: () => _go(const CountdownPage()), // atau halaman daftar hajatan
                     child: const Text(
                       'Lihat Semua',
                       style: TextStyle(
@@ -275,21 +303,6 @@ class _HomePageState extends State<HomePage> {
         ),
         Row(
           children: [
-            // Notifikasi
-            GestureDetector(
-              onTap: () => _go(const NotificationPage()),
-              child: Container(
-                width: 42,
-                height: 42,
-                margin: const EdgeInsets.only(right: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFd4af37).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.notifications_outlined,
-                    color: Color(0xFFd4af37)),
-              ),
-            ),
             // Logout
             GestureDetector(
               onTap: _logout,
@@ -423,98 +436,110 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildUpcomingHajatan() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () {
-            // TODO: Navigasi ke detail hajatan
-            print('Buka detail Pernikahan Adit & Sari');
-          },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Judul Hajatan
-                const Text(
-                  'Pernikahan Adit & Sari',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
+    if (_isLoadingCountdown) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFd4af37)),
+      );
+    }
 
-                // Tanggal
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today,
-                        size: 18, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_today.add(const Duration(days: 14)).day} ${_bulanMasehi[_today.add(const Duration(days: 14)).month]} ${_today.add(const Duration(days: 14)).year}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Progress Persiapan
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Persiapan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Text(
-                      '65%',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFd4af37),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Progress Bar
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: 0.65,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFd4af37),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    if (_upcomingCountdowns.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
         ),
-      ],
+        child: Column(
+          children: const [
+            Icon(Icons.event_busy, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'Belum ada hajatan mendatang',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Hajatan yang sudah lewat tidak ditampilkan di sini',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final hajatan = _upcomingCountdowns.first;
+
+    return GestureDetector(
+      onTap: () => _go(const CountdownPage()),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hajatan.judul,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${hajatan.tanggal.day} ${_bulanMasehi[hajatan.tanggal.month]} ${hajatan.tanggal.year}',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFd4af37).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'SISA',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFd4af37),
+                    ),
+                  ),
+                  Text(
+                    hajatan.sisaHariLabel,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFd4af37),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

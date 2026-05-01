@@ -19,11 +19,6 @@ class _MapPageState extends State<MapPage> {
   List<VendorModel> _vendors = [];
   VendorModel? _selectedVendor;
   bool _isLoading = true;
-  String _activeFilter = 'Semua';
-
-  final List<String> _filters = [
-    'Semua', 'Katering', 'Dekorasi', 'Fotografer', 'Gedung'
-  ];
 
   // Default center: Yogyakarta
   static const LatLng _defaultCenter = LatLng(-7.7956, 110.3695);
@@ -54,13 +49,6 @@ class _MapPageState extends State<MapPage> {
         );
       }
     }
-  }
-
-  List<VendorModel> get _filteredVendors {
-    if (_activeFilter == 'Semua') return _vendors;
-    return _vendors.where((v) =>
-        v.deksripsi.toLowerCase().contains(_activeFilter.toLowerCase())
-    ).toList();
   }
 
   void _onMarkerTap(VendorModel vendor) {
@@ -95,7 +83,6 @@ class _MapPageState extends State<MapPage> {
                     onTap: (_, __) => _closeBottomSheet(),
                   ),
                   children: [
-                    // Tile layer OpenStreetMap
                     TileLayer(
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -104,8 +91,8 @@ class _MapPageState extends State<MapPage> {
 
                     // Marker layer
                     MarkerLayer(
-                      markers: _filteredVendors.map((vendor) {
-                        final isSelected = _selectedVendor?.id == vendor.id;
+                      markers: _vendors.map((vendor) {
+                        final isSelected = _selectedVendor?.uuid == vendor.uuid;
                         return Marker(
                           point: LatLng(vendor.latitude, vendor.longitude),
                           width: isSelected ? 52 : 42,
@@ -132,7 +119,7 @@ class _MapPageState extends State<MapPage> {
                                 ],
                               ),
                               child: Icon(
-                                _categoryIcon(vendor.deksripsi),
+                                Icons.location_on,
                                 color: Colors.white,
                                 size: isSelected ? 26 : 20,
                               ),
@@ -144,103 +131,55 @@ class _MapPageState extends State<MapPage> {
                   ],
                 ),
 
-          // ── SEARCH BAR + FILTER (overlay atas) ──
+          // ── SEARCH BAR ──
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
             right: 16,
-            child: Column(
-              children: [
-                // Search bar
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
-                  child: TextField(
-                    readOnly: true,
-                    onTap: () {
-                      // Arahkan ke search page
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const _VendorSearchDelegate(),
-                        ),
-                      );
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari vendor di sekitarmu...',
-                      hintStyle: TextStyle(
-                          color: Colors.grey[500], fontSize: 14),
-                      prefixIcon: const Icon(Icons.search,
-                          color: Color(0xFFd4af37)),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                          vertical: 14),
+                ],
+              ),
+              child: TextField(
+                readOnly: true,
+                onTap: () async {
+                  // 2. Tambahkan variabel untuk menampung hasil kembalian dari halaman search
+                  final VendorModel? selectedFromSearch = await Navigator.of(context).push<VendorModel>(
+                    MaterialPageRoute(
+                      builder: (_) => const _VendorSearchDelegate(),
                     ),
-                  ),
-                ),
+                  );
 
-                const SizedBox(height: 10),
-
-                // Filter chips
-                SizedBox(
-                  height: 34,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _filters.length,
-                    itemBuilder: (context, i) {
-                      final isActive = _activeFilter == _filters[i];
-                      return GestureDetector(
-                        onTap: () => setState(() {
-                          _activeFilter = _filters[i];
-                          _selectedVendor = null;
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? const Color(0xFFd4af37)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 4,
-                              )
-                            ],
-                          ),
-                          child: Text(
-                            _filters[i],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: isActive
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              color: isActive
-                                  ? const Color(0xFF884513)
-                                  : Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  // 3. Jika user memilih vendor (tidak menekan tombol back tanpa memilih)
+                  if (selectedFromSearch != null && mounted) {
+                    // Panggil fungsi _onMarkerTap yang sudah Anda buat sebelumnya
+                    // Fungsi ini otomatis menggeser peta dan memunculkan bottom sheet
+                    _onMarkerTap(selectedFromSearch);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: 'Cari vendor di sekitarmu...',
+                  hintStyle: TextStyle(
+                      color: Colors.grey[500], fontSize: 14),
+                  prefixIcon: const Icon(Icons.search,
+                      color: Color(0xFFd4af37)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                      vertical: 14),
                 ),
-              ],
+              ),
             ),
           ),
 
-          // ── COUNTER VENDOR (kiri bawah) ──
+          // ── COUNTER VENDOR ──
           Positioned(
             bottom: _selectedVendor != null ? 220 : 20,
             left: 16,
@@ -258,7 +197,7 @@ class _MapPageState extends State<MapPage> {
                 ],
               ),
               child: Text(
-                '${_filteredVendors.length} vendor',
+                '${_vendors.length} vendor ditemukan',
                 style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -267,7 +206,7 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // ── BOTTOM SHEET VENDOR (saat marker dipilih) ──
+          // ── BOTTOM SHEET VENDOR ──
           if (_selectedVendor != null)
             Positioned(
               bottom: 0,
@@ -297,7 +236,6 @@ class _MapPageState extends State<MapPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Container(
             width: 40,
             height: 4,
@@ -306,12 +244,9 @@ class _MapPageState extends State<MapPage> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-
           const SizedBox(height: 16),
-
           Row(
             children: [
-              // Avatar initial
               Container(
                 width: 52,
                 height: 52,
@@ -332,9 +267,7 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 14),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,70 +294,40 @@ class _MapPageState extends State<MapPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      vendor.deksripsi,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey[500]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ],
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            VendorDetailPage(vendor: vendor),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFd4af37),
-                    foregroundColor: const Color(0xFF884513),
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                  ),
-                  child: const Text(
-                    'Lihat Detail Vendor',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VendorDetailPage(vendor: vendor),
                 ),
-              ),
-            ],
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFd4af37),
+              foregroundColor: const Color(0xFF884513),
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+            ),
+            child: const Text(
+              'Lihat Detail Vendor',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
   }
-
-  IconData _categoryIcon(String deskripsi) {
-    final d = deskripsi.toLowerCase();
-    if (d.contains('kater')) return Icons.restaurant;
-    if (d.contains('dekor')) return Icons.local_florist;
-    if (d.contains('foto') || d.contains('video')) return Icons.camera_alt;
-    if (d.contains('gedung') || d.contains('venue') || d.contains('hall')) {
-      return Icons.location_city;
-    }
-    return Icons.store;
-  }
 }
 
-// ── SEARCH DELEGATE (tap search bar di peta) ──
 class _VendorSearchDelegate extends StatefulWidget {
   const _VendorSearchDelegate();
 
@@ -455,11 +358,15 @@ class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
   }
 
   Future<void> _load() async {
-    final res = await _supabase.from('vendor').select();
-    setState(() {
-      _all = (res as List).map((e) => VendorModel.fromJson(e)).toList();
-      _filtered = _all;
-    });
+    try {
+      final res = await _supabase.from('vendor').select();
+      setState(() {
+        _all = (res as List).map((e) => VendorModel.fromJson(e)).toList();
+        _filtered = _all;
+      });
+    } catch (e) {
+      print('Search Error: $e');
+    }
   }
 
   @override
@@ -470,6 +377,10 @@ class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
         backgroundColor: const Color(0xfffcf9f8),
         elevation: 0,
         titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: TextField(
           controller: _ctrl,
           autofocus: true,
@@ -501,7 +412,9 @@ class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
                 maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing:
                 const Icon(Icons.arrow_forward_ios, size: 14),
-            onTap: () => Navigator.pop(context, v),
+            onTap: () {
+              Navigator.pop(context, v); 
+            },
           );
         },
       ),

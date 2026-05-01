@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:projek_akhir/auth/auth_gate.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
+import 'package:projek_akhir/pages/bookmark_page.dart';
+import 'package:projek_akhir/pages/kesan_pesan.dart';
 import 'package:projek_akhir/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,12 +20,6 @@ class _ProfilePageState extends State<ProfilePage> {
   String _userEmail = '';
   String? _profileImageUrl;
   bool _isUploading = false;
-
-  // Controller untuk feedback
-  final _kesanController = TextEditingController();
-  final _saranController = TextEditingController();
-  int _rating = 0;
-  bool _submitted = false;
 
   @override
   void initState() {
@@ -46,88 +42,85 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _loadProfileImage(String uuid) {
-  try {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final url = Supabase.instance.client.storage
-        .from('profile')
-        .getPublicUrl('$uuid.jpg');
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final url = Supabase.instance.client.storage
+          .from('profile')
+          .getPublicUrl('$uuid.jpg');
 
-    // Tambahkan timestamp agar cache di-refresh
-    final imageUrlWithCacheBuster = '$url?t=$timestamp';
+      final imageUrlWithCacheBuster = '$url?t=$timestamp';
 
-    setState(() {
-      _profileImageUrl = imageUrlWithCacheBuster;
-    });
-  } catch (e) {
-    print('Error loading profile image: $e');
-    setState(() => _profileImageUrl = null);
-  }
-}
-
-  // ================== UPLOAD FOTO PROFIL ==================
-Future<void> _uploadProfilePhoto() async {
-  final picker = ImagePicker();
-  final XFile? pickedFile = await picker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 75,
-    maxWidth: 800,
-  );
-
-  if (pickedFile == null) return;
-
-  setState(() => _isUploading = true);
-
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final String? uuid = prefs.getString('user_id');
-
-    if (uuid == null || uuid.isEmpty) {
-      throw Exception('User ID tidak ditemukan');
+      setState(() {
+        _profileImageUrl = imageUrlWithCacheBuster;
+      });
+    } catch (e) {
+      print('Error loading profile image: $e');
+      setState(() => _profileImageUrl = null);
     }
+  }
 
-    final bytes = await pickedFile.readAsBytes();
-    final fileName = '$uuid.jpg';
+  // buat upload fto
+  Future<void> _uploadProfilePhoto() async {
+    final picker = ImagePicker();
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 75,
+      maxWidth: 800,
+    );
 
-    await Supabase.instance.client.storage
-        .from('profile')
-        .uploadBinary(
-          fileName,
-          bytes,
-          fileOptions: const FileOptions(
-            cacheControl: '3600',
-            upsert: true,
+    if (pickedFile == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? uuid = prefs.getString('user_id');
+
+      if (uuid == null || uuid.isEmpty) {
+        throw Exception('User ID tidak ditemukan');
+      }
+
+      final bytes = await pickedFile.readAsBytes();
+      final fileName = '$uuid.jpg';
+
+      await Supabase.instance.client.storage
+          .from('profile')
+          .uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+            ),
+          );
+
+      _loadProfileImage(uuid);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Foto profil berhasil diupdate'),
+            backgroundColor: Colors.green,
           ),
         );
-
-    // Refresh gambar dengan cache buster
-    _loadProfileImage(uuid);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Foto profil berhasil diupdate'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  } catch (e) {
-    print('Upload Error: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal mengupload foto: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _isUploading = false);
+      }
+    } catch (e) {
+      print('Upload Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengupload foto: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
-}
 
-  // ================== LOGOUT ==================
   void _logout() async {
     await AuthStorage.deleteSession();
     await UserService.logout();
@@ -140,7 +133,6 @@ Future<void> _uploadProfilePhoto() async {
     }
   }
 
-  // ================== DIALOG EDIT PROFILE (Tanpa Foto) ==================
   void _showEditDialog() {
     final nameController = TextEditingController(text: _userName);
     final emailController = TextEditingController(text: _userEmail);
@@ -148,280 +140,181 @@ Future<void> _uploadProfilePhoto() async {
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Edit Profil',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFd4af37),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Password Baru (opsional)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Batal', style: TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final prefs = await SharedPreferences.getInstance();
-                          final userId = prefs.getString('user_id');
-
-                          if (userId == null || userId.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('User ID tidak ditemukan'), backgroundColor: Colors.red),
-                            );
-                            return;
-                          }
-
-                          final success = await UserService().updateUser(
-                            userId: userId,
-                            nama: nameController.text.trim(),
-                            email: emailController.text.trim(),
-                            password: passwordController.text.trim().isEmpty
-                                ? null
-                                : passwordController.text.trim(),
-                          );
-
-                          if (success) {
-                            await prefs.setString('nama', nameController.text.trim());
-                            await prefs.setString('email', emailController.text.trim());
-
-                            setState(() {
-                              _userName = nameController.text.trim();
-                              _userEmail = emailController.text.trim();
-                            });
-
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Profil berhasil diperbarui'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Gagal update profil'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFd4af37),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Simpan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: const Color(0xfffcf9f8),
+        title: const Text(
+          'Edit Profil',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF884513),
           ),
         ),
-      ),
-    );
-  }
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Perbarui informasi akun Anda di bawah ini",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
 
-  // ================== DIALOG SARAN & KESAN ==================
-  void _showFeedbackDialog() {
-    // Reset nilai saat dialog dibuka
-    _rating = 0;
-    _kesanController.clear();
-    _saranController.clear();
+              _buildEditTextField(
+                controller: nameController,
+                label: 'Nama Lengkap',
+                icon: Icons.person_outline,
+              ),
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Saran & Kesan TPM',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFd4af37),
+              const SizedBox(height: 16),
+              _buildEditTextField(
+                controller: emailController,
+                label: 'Email',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+              ),
+
+              const SizedBox(height: 16),
+              _buildEditTextField(
+                controller: passwordController,
+                label: 'Password Baru (Opsional)',
+                icon: Icons.lock_outline,
+                isPassword: true,
+              ),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Color(0xFF884513)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(
+                    'Batal',
+                    style: TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold),
                   ),
                 ),
-                const SizedBox(height: 24),
+              ),
+              SizedBox(width: 12),
+  
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getString('user_id');
 
-                // Rating
-                const Text(
-                  'Rating Mata Kuliah',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (i) {
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() => _rating = i + 1);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          i < _rating ? Icons.star : Icons.star_border,
-                          color: const Color(0xFFd4af37),
-                          size: 40,
-                        ),
-                      ),
+                    if (userId == null || userId.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('User ID tidak ditemukan'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+
+                    final success = await UserService().updateUser(
+                      userId: userId,
+                      nama: nameController.text.trim(),
+                      email: emailController.text.trim(),
+                      password: passwordController.text.trim().isEmpty
+                          ? null
+                          : passwordController.text.trim(),
                     );
-                  }),
-                ),
 
-                const SizedBox(height: 24),
+                    if (success) {
+                      await prefs.setString('nama', nameController.text.trim());
+                      await prefs.setString('email', emailController.text.trim());
 
-                // Kesan
-                const Text(
-                  'Kesan',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _kesanController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'Tuliskan kesan kamu terhadap mata kuliah...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.all(16),
+                      setState(() {
+                        _userName = nameController.text.trim();
+                        _userEmail = emailController.text.trim();
+                      });
+
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: Colors.green),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Gagal update profil'), backgroundColor: Colors.red),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFd4af37),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Simpan',
+                    style: TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Saran
-                const Text(
-                  'Saran',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _saranController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: 'Tuliskan saran untuk perbaikan...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // Tombol
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Batal', style: TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _submitFeedback,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFd4af37),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Kirim Feedback', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  void _submitFeedback() {
-    if (_kesanController.text.trim().isEmpty || _saranController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kesan dan saran tidak boleh kosong'), backgroundColor: Colors.red),
-      );
-      return;
-    }
+  // Helper Widget untuk TextField Edit Profil agar tidak duplikasi kode
+  Widget _buildEditTextField({ required TextEditingController controller, required String label, required IconData icon, bool isPassword = false, 
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: isPassword,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
 
-    setState(() => _submitted = true);
-    Navigator.pop(context);
+        prefixIcon: Icon(icon, color: const Color(0xFFd4af37), size: 20),
+        filled: true,
+        fillColor: Colors.white,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Feedback berhasil dikirim! Terima kasih.'),
-        backgroundColor: Colors.green,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
+        ),
+
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
+  }
 
-    _kesanController.clear();
-    _saranController.clear();
-    _rating = 0;
+  void _goToKesanPesanPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const KesanPesanPage(),
+      ),
+    );
+  }
+
+  void _goToBookmarkPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const BookmarkPage(),
+      ),
+    );
   }
 
   @override
@@ -436,7 +329,7 @@ Future<void> _uploadProfilePhoto() async {
             children: [
               const SizedBox(height: 20),
 
-              // ================== AVATAR + TOMBOL UPLOAD ==================
+              // upload foto
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -458,7 +351,7 @@ Future<void> _uploadProfilePhoto() async {
                         : null,
                   ),
 
-                  // Tombol Ubah Foto
+                  // edit foto
                   GestureDetector(
                     onTap: _isUploading ? null : _uploadProfilePhoto,
                     child: Container(
@@ -489,7 +382,6 @@ Future<void> _uploadProfilePhoto() async {
 
               const SizedBox(height: 16),
 
-              // Nama & Email
               Text(
                 _userName,
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -501,28 +393,7 @@ Future<void> _uploadProfilePhoto() async {
 
               const SizedBox(height: 30),
 
-              // Statistik
-              Card(
-                elevation: 0,
-                color: Colors.grey.shade100,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                  child: Row(
-                    children: [
-                      _buildStat("3", "Hajatan"),
-                      _buildStat("12", "Vendor"),
-                      _buildStat("5", "Checklist"),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 32),
-              const Divider(),
-              const SizedBox(height: 16),
-
-              // Menu Edit Profile
+              // ini button edit ptofilr
               _buildMenuCard(
                 icon: Icons.person,
                 iconColor: Colors.brown,
@@ -533,18 +404,27 @@ Future<void> _uploadProfilePhoto() async {
 
               const SizedBox(height: 12),
 
-              // Menu Saran & Kesan
               _buildMenuCard(
                 icon: Icons.feedback_outlined,
                 iconColor: const Color(0xFFd4af37),
                 iconBgColor: const Color(0xFFd4af37).withOpacity(0.15),
                 title: "Saran & Kesan TPM",
-                onTap: _showFeedbackDialog,
+                onTap: _goToKesanPesanPage,
+              ),
+
+              const SizedBox(height: 12),
+
+              // Menu Notifikasi
+              _buildMenuCard(
+                icon: Icons.bookmark,
+                iconColor: const Color(0xFFd4af37),
+                iconBgColor: const Color(0xFFd4af37).withOpacity(0.15),
+                title: "Bookmark",
+                onTap: _goToBookmarkPage,
               ),
 
               const SizedBox(height: 40),
 
-              // Logout Button
               ElevatedButton.icon(
                 onPressed: _logout,
                 icon: const Icon(Icons.logout),
@@ -604,21 +484,4 @@ Future<void> _uploadProfilePhoto() async {
     );
   }
 
-  Widget _buildStat(String value, String label) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _kesanController.dispose();
-    _saranController.dispose();
-    super.dispose();
-  }
 }

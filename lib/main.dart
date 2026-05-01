@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_gate.dart';
-import 'package:projek_akhir/utils/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:projek_akhir/services/notification_service.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -19,7 +18,6 @@ void main() async{
 
   await NotificationService().init();
 
-
   runApp(const MainApp());
 }
 
@@ -30,7 +28,6 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
       home: AuthGate(),
     );
   }

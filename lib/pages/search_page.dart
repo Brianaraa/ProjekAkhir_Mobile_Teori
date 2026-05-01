@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:projek_akhir/models/vendor_models.dart';
-import 'package:projek_akhir/services/notification_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -15,17 +14,12 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final _searchController = TextEditingController();
   final _supabase = Supabase.instance.client;
-  final _notifService = NotificationService();
 
   List<VendorModel> _allVendors = [];
   List<VendorModel> _filtered = [];
   bool _isLoading = true;
   String _query = '';
   Timer? _debounce;
-
-  // Filter chip yang aktif
-  String _activeFilter = 'Semua';
-  final List<String> _filters = ['Semua', 'Katering', 'Dekorasi', 'Fotografer', 'Gedung'];
 
   @override
   void initState() {
@@ -64,73 +58,40 @@ class _SearchPageState extends State<SearchPage> {
       if (mounted) {
         setState(() {
           _query = _searchController.text.toLowerCase();
-          _applyFilter();
+          _applySearch();
         });
       }
     });
   }
 
-  void _applyFilter() {
+  void _applySearch() {
     setState(() {
       _filtered = _allVendors.where((v) {
-        final matchSearch = _query.isEmpty ||
+        return _query.isEmpty ||
             v.namaVendor.toLowerCase().contains(_query) ||
             v.alamat.toLowerCase().contains(_query) ||
-            v.deksripsi.toLowerCase().contains(_query);
-
-        // Filter kategori — cocokkan dengan field deskripsi vendor
-        // (asumsi deskripsi mengandung kata kategori)
-        final matchFilter = _activeFilter == 'Semua' ||
-            v.deksripsi.toLowerCase().contains(_activeFilter.toLowerCase());
-
-        return matchSearch && matchFilter;
+            v.deskripsi.toLowerCase().contains(_query);
       }).toList();
     });
-  }
-
-  void _setFilter(String filter) {
-    setState(() => _activeFilter = filter);
-    _applyFilter();
-  }
-
-  // Kirim notifikasi saat vendor disimpan/dipilih
-  Future<void> _saveVendor(VendorModel vendor) async {
-    await _notifService.showNow(
-      id: vendor.id.hashCode,
-      title: 'Vendor Disimpan ✓',
-      body: '${vendor.namaVendor} telah ditambahkan ke daftar hajatanmu.',
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${vendor.namaVendor} disimpan ke hajatan'),
-          backgroundColor: const Color(0xFF884513),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfffcf9f8),
-        appBar: AppBar(
-          backgroundColor:  const Color(0xfffcf9f8),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
+      appBar: AppBar(
+        backgroundColor: const Color(0xfffcf9f8),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
         ),
+      ),
 
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── HEADER ──
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
               child: Column(
@@ -152,28 +113,13 @@ class _SearchPageState extends State<SearchPage> {
 
             const SizedBox(height: 16),
 
-            // ── SEARCH BAR ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _searchBar(),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
-            // ── FILTER CHIPS ──
-            SizedBox(
-              height: 36,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: _filters.length,
-                itemBuilder: (context, i) => _filterChip(_filters[i]),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── LIST HASIL ──
             Expanded(
               child: _isLoading
                   ? const Center(
@@ -207,7 +153,7 @@ class _SearchPageState extends State<SearchPage> {
                 onTap: () {
                   _searchController.clear();
                   setState(() => _query = '');
-                  _applyFilter();
+                  _applySearch();
                 },
                 child: const Icon(Icons.close, color: Colors.grey),
               )
@@ -229,34 +175,12 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _filterChip(String label) {
-    final isActive = _activeFilter == label;
-    return GestureDetector(
-      onTap: () => _setFilter(label),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFd4af37) : const Color(0xfff6f3f2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? const Color(0xFFd4af37) : Colors.grey.shade300,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? const Color(0xFF884513) : Colors.grey[700],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _vendorCard(VendorModel vendor) {
+    String displayDeskripsi = vendor.deskripsi;
+    if (displayDeskripsi.length > 50) {
+      displayDeskripsi = '${displayDeskripsi.substring(0, 50)}...';
+    }
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
@@ -278,7 +202,6 @@ class _SearchPageState extends State<SearchPage> {
         ),
         child: Row(
           children: [
-            // Avatar initial
             Container(
               width: 48,
               height: 48,
@@ -302,7 +225,6 @@ class _SearchPageState extends State<SearchPage> {
 
             const SizedBox(width: 12),
 
-            // Info vendor
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,39 +237,17 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 2),
                   Text(
                     vendor.alamat,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    vendor.deksripsi,
+                    displayDeskripsi,
                     style: TextStyle(
                         fontSize: 12, color: Colors.grey[500]),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // Tombol simpan
-            GestureDetector(
-              onTap: () => _saveVendor(vendor),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFd4af37).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.bookmark_add_outlined,
-                  color: Color(0xFFd4af37),
-                  size: 22,
-                ),
               ),
             ),
           ],
