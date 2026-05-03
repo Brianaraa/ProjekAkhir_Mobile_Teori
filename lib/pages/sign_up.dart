@@ -62,12 +62,11 @@ class _SignUpPageState extends State<SignUpPage> {
         if (uuid == null || uuid.isEmpty) {
           throw Exception('UUID tidak ditemukan dari server');
         }
-
-        // Simpan hanya uuid ke SharedPreferences (Single Source of Truth)
+        
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_id', uuid);
 
-        // Opsional: simpan token session
+        // simpen token session
         final token = 'token_${DateTime.now().millisecondsSinceEpoch}';
         final expiredAt = DateTime.now().add(const Duration(hours: 24));
         await AuthStorage.saveSession(token: token, expiredAt: expiredAt);
@@ -79,7 +78,6 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         );
 
-        // Redirect ke AuthGate
         if (context.mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -96,7 +94,7 @@ class _SignUpPageState extends State<SignUpPage> {
         );
       }
     } catch (e) {
-      print('SignUp Error: $e'); // Untuk debugging
+      print('SignUp Error: $e'); //dbug
 
       String errorMessage = 'Terjadi kesalahan saat mendaftar';
 
@@ -126,6 +124,7 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xfffcf9f8),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Container(
@@ -138,12 +137,11 @@ class _SignUpPageState extends State<SignUpPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Hagati",
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
-                Text(
-                  "TRADISI DALAM MODERNITAS",
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  "Daftar Akun",
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
                 const SizedBox(height: 40),
@@ -151,8 +149,15 @@ class _SignUpPageState extends State<SignUpPage> {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Color(0xfff6f3f2),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
 
                   child: Column(
@@ -184,7 +189,11 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text("Daftar"),
+                            : const Text("Daftar", 
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                       ),
                     ],
                   ),
@@ -215,7 +224,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         "Masuk",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF884513),
+                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -242,22 +251,23 @@ class _SignUpPageState extends State<SignUpPage> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.grey),
+      hintStyle: const TextStyle(color:   Colors.grey),
+
       filled: true,
       fillColor: Colors.white,
 
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
 
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.grey),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
       ),
 
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
       ),
 
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

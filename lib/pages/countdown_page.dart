@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/countdown_service.dart';
-import '../services/notification_service.dart';
-import '../models/countdown_model.dart';
+import 'package:projek_akhir/services/countdown_service.dart';
+import 'package:projek_akhir/services/notification_service.dart';
+import 'package:projek_akhir/models/countdown_model.dart';
 
 class CountdownPage extends StatefulWidget {
   const CountdownPage({super.key});
@@ -33,121 +33,240 @@ class _CountdownPageState extends State<CountdownPage> {
 
     try {
       final result = await _service.getMyCountdowns();
-
       setState(() {
         _data = result;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error fetching countdown: $e');
       setState(() {
         _errorMessage = 'Gagal memuat data countdown';
         _isLoading = false;
-        _data = [];
       });
     }
   }
 
-  void _showAddDialog() {
-    final judulController = TextEditingController();
-    DateTime selectedDate = DateTime.now();
+  Future<void> _sendTestNotification(CountdownModel item) async {
+    final notifId = item.uuid.hashCode.abs();
 
-    showModalBottomSheet(
+    try {
+      await _notificationService.showNow(
+        id: notifId,
+        title: 'Pengingat Hajatan',
+        body: 'H-${item.sisaHari.abs()} • ${item.judul}',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notifikasi dikirim')),
+        );
+      }
+    } catch (e) {
+      print('Error kirim notif: $e');
+    }
+  }
+
+  Future<void> _deleteCountdown(CountdownModel item) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: const Color(0xfffcf9f8),
+
+        title: const Text(
+          'Hapus Countdown',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF884513),
+          ),
+        ),
+
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Apakah kamu yakin ingin menghapus data ini?',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.judul,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFd4af37),
+              ),
+            ),
+          ],
+        ),
+
+        actionsPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+
+    if (confirm == true) {
+      try {
+        await _service.deleteCountdown(item.uuid);
+        fetchData();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Berhasil dihapus')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal menghapus')),
+        );
+      }
+    }
+  }
+
+  void _showDialog({CountdownModel? item}) {
+    final judulController =
+        TextEditingController(text: item?.judul ?? '');
+    DateTime selectedDate = item?.tanggal ?? DateTime.now();
+
+    showDialog(
+      context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                left: 20,
-                right: 20,
-                top: 20,
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              backgroundColor: const Color(0xfffcf9f8),
+              title: Text(
+                item == null ? 'Tambah Countdown' : 'Edit Countdown',
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF884513)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tambah Countdown Baru',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: judulController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama Hajatan/Kegiatan',
-                      border: OutlineInputBorder(),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: judulController,
+                      decoration: InputDecoration(
+                        labelText: 'Nama Hajatan',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
-                  ListTile(
-                    leading: const Icon(Icons.calendar_today),
-                    title: Text(
-                      DateFormat('dd MMMM yyyy').format(selectedDate),
-                    ),
-                    subtitle: const Text('Klik untuk pilih tanggal'),
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: selectedDate,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setModalState(() => selectedDate = picked);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (judulController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Nama hajatan tidak boleh kosong')),
-                          );
-                          return;
-                        }
 
-                        try {
-                          await _service.addCountdown(
-                            judulController.text.trim(),
-                            selectedDate,
-                          );
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            fetchData(); // Refresh list
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Countdown berhasil ditambahkan'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Gagal menyimpan: $e')),
-                            );
-                          }
+                    const SizedBox(height: 16),
+
+                    ListTile(
+                      leading: const Icon(Icons.calendar_today),
+                      title: Text(
+                        DateFormat('dd MMMM yyyy').format(selectedDate),
+                      ),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          setModalState(() => selectedDate = picked);
                         }
                       },
-                      child: const Text('Simpan Countdown'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child:
+                      const Text('Batal', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (judulController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Judul tidak boleh kosong')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      if (item == null) {
+                        await _service.addCountdown(
+                          judulController.text.trim(),
+                          selectedDate,
+                        );
+                      } else {
+                        await _service.updateCountdown(
+                          item.uuid,
+                          judulController.text.trim(),
+                          selectedDate,
+                        );
+                      }
+
+                      Navigator.pop(context);
+                      fetchData();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(item == null
+                              ? 'Berhasil ditambahkan'
+                              : 'Berhasil diupdate'),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFd4af37),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text(
+                    item == null ? 'Simpan' : 'Update',
+                    style: const TextStyle(
+                        color: Color(0xFF884513),
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -155,102 +274,19 @@ class _CountdownPageState extends State<CountdownPage> {
     );
   }
 
-  // Fungsi untuk kirim notifikasi testing
-  Future<void> _sendTestNotification(CountdownModel item) async {
-  final notifId = item.uuid.hashCode.abs();
-
-  try {
-    print('🔄 Mencoba kirim notifikasi ID: $notifId');
-
-    await _notificationService.showNow(
-      id: notifId,
-      title: 'Testing Notifikasi Hajatan',
-      body: 'H-${item.sisaHari.abs()} • ${item.judul}',
-    );
-
-    print('showNow dipanggil tanpa error');
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notifikasi dikirim ke sistem')),
-      );
-    }
-  } catch (e) {
-    print('gagal mmengirim notifikasi: $e');
-  }
-}
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Countdown Saya'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: fetchData,
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: fetchData,
-        child: _buildBody(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFd4af37)),
+      );
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 70, color: Colors.redAccent),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: fetchData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Coba Lagi'),
-              ),
-            ],
-          ),
-        ),
-      );
+      return Center(child: Text(_errorMessage!));
     }
 
     if (_data.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Belum ada countdown', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 8),
-            Text(
-              'Tekan tombol + untuk menambahkan',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      );
+      return const Center(child: Text('Belum ada countdown'));
     }
 
     return ListView.builder(
@@ -258,49 +294,160 @@ class _CountdownPageState extends State<CountdownPage> {
       itemCount: _data.length,
       itemBuilder: (context, index) {
         final item = _data[index];
-        final tanggalFormat = DateFormat('dd MMM yyyy').format(item.tanggal);
         final isPast = item.sisaHari < 0;
+        final hari = item.sisaHari.abs();
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 3,
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Text(
-              item.judul,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Tanggal: $tanggalFormat'),
-                const SizedBox(height: 4),
-                Text(
-                  item.sisaHariLabel,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: isPast ? Colors.red : Colors.green,
+            ],
+          ),
+
+          child: Row(
+            children: [
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFd4af37).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$hari',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF884513),
+                      ),
+                    ),
+                    const Text(
+                      'hari',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              Expanded(
+                child: Text(
+                  item.judul,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_active, color: Color(0xFFd4af37)),
-                  tooltip: 'Kirim notifikasi sekarang',
-                  onPressed: () => _sendTestNotification(item),
+              ),
+
+              IconButton(
+                icon: const Icon(Icons.notifications_active,
+                    color: Color(0xFFd4af37)),
+                onPressed: () => _sendTestNotification(item),
+              ),
+
+              PopupMenuButton<String>(
+                color: const Color(0xfffcf9f8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            ),
+
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _showDialog(item: item);
+                  } else if (value == 'delete') {
+                    _deleteCountdown(item);
+                  }
+                },
+
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.edit, size: 18, color: Color(0xFFd4af37)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Edit',
+                          style: TextStyle(
+                            color: Color(0xFF884513),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: const [
+                        Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                        SizedBox(width: 8),
+                        Text(
+                          'Hapus',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: Color(0xFF884513), // icon titik 3 warna tema
+                ),
+              )
+            ],
           ),
         );
       },
+    );
+  }
+
+  // ================= UI =================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xfffcf9f8),
+      appBar: AppBar(
+        title: const Text(
+          'Countdown Saya',
+          style: TextStyle(
+              fontWeight: FontWeight.bold, color: Color(0xFF884513)),
+        ),
+        backgroundColor: const Color(0xfffcf9f8),
+        elevation: 0,
+        centerTitle: true,
+      ),
+      body: RefreshIndicator(
+        onRefresh: fetchData,
+        color: const Color(0xFFd4af37),
+        child: _buildBody(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFFd4af37),
+        onPressed: () => _showDialog(),
+        child: const Icon(Icons.add, color: Color(0xFF884513)),
+      ),
     );
   }
 }

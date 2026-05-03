@@ -6,7 +6,12 @@ import 'package:projek_akhir/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final bool isSessionExpired;
+
+  const LoginPage({
+    super.key,
+    this.isSessionExpired = false,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -56,8 +61,13 @@ class _LoginPageState extends State<LoginPage> {
       await UserService.saveCurrentUserName(user['nama']);
 
       final token = result['token'] as String;
-      final expiredAt = DateTime.now().add(const Duration(hours: 24));
-      await AuthStorage.saveSession(token: token, expiredAt: expiredAt);
+
+      await AuthStorage.saveSession(
+        token: token,
+        expiredAt: DateTime.now().add(const Duration(minutes: 10)), //ganti jam disini
+      );
+
+      await AuthStorage.setBiometric(true);
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(
@@ -92,6 +102,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+
+    if (widget.isSessionExpired) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sesi berakhir, harap login kembali'),
+          ),
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xfffcf9f8),
@@ -120,15 +145,22 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 50),
 
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Color(0xfff6f3f2),
+                    color: Colors.white, // 🔥 jadi putih
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
+
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // email
                       const Text(
                         "Alamat Email",
                         style: TextStyle(fontSize: 13, color: Color(0xff000000), fontWeight: FontWeight.bold),
@@ -139,7 +171,6 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 20),
 
-                      // Password
                       const Text(
                         "Kata Sandi",
                         style: TextStyle(fontSize: 13, color: Color(0xff000000), fontWeight: FontWeight.bold),
@@ -217,23 +248,25 @@ class _LoginPageState extends State<LoginPage> {
     return TextField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
-      
       decoration: InputDecoration(
         hintText: 'nama@gmail.com',
-        hintStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+
+        prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFd4af37)),
 
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
 
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
 
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
 
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -246,44 +279,41 @@ class _LoginPageState extends State<LoginPage> {
       controller: _passwordController,
       obscureText: !_isVisible,
       enabled: !_isLoading,
-      
       decoration: InputDecoration(
         hintText: '********',
-        hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: Colors.white,
 
+        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFd4af37)),
+
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
 
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
         ),
 
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
 
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
 
-        suffixIcon: Padding(
-          padding: const EdgeInsets.only(left: 20, right: 10),
-          child: IconButton(
-            icon: Icon(
-              _isVisible ? Icons.visibility : Icons.visibility_off,
-              color: Colors.grey,
-            ),
-            onPressed: _isLoading
-                ? null
-                : () {
-                    setState(() {
-                      _isVisible = !_isVisible;
-                    });
-                  },
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isVisible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
           ),
+          onPressed: _isLoading
+              ? null
+              : () {
+                  setState(() {
+                    _isVisible = !_isVisible;
+                  });
+                },
         ),
       ),
     );

@@ -57,6 +57,37 @@ class CountdownService {
     }
   }
 
+  Future<void> deleteCountdown(String uuid) async {
+    try {
+      await supabase
+          .from('countdown')
+          .delete()
+          .eq('uuid', uuid);
+    } catch (e) {
+      print('Error deleteCountdown: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateCountdown(
+    String uuid,
+    String judul,
+    DateTime tanggal,
+  ) async {
+    try {
+      await supabase
+          .from('countdown')
+          .update({
+            'judul': judul,
+            'tanggal': tanggal.toIso8601String(),
+          })
+          .eq('uuid', uuid);
+    } catch (e) {
+      print('Error updateCountdown: $e');
+      rethrow;
+    }
+  }
+
   Future<void> scheduleH1Reminder(CountdownModel countdown) async {
     final notificationId = countdown.uuid.hashCode.abs();
 

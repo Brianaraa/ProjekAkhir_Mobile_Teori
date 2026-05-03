@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/pages/balance_game_page.dart';
 import 'package:projek_akhir/pages/chat_page.dart';
-import 'package:projek_akhir/pages/quiz_page.dart';
+// import 'package:projek_akhir/pages/quiz_page.dart';
 import 'package:projek_akhir/pages/seating_page.dart';
 import 'package:projek_akhir/pages/budget_estimator_page.dart';
 
@@ -18,12 +18,12 @@ class FeaturesPage extends StatelessWidget {
         'icon': Icons.auto_awesome,
         'page': const ChatPage(),
       },
-      {
-        'title': 'Tahu Adat Nggak?',
-        'subtitle': 'Kuis interaktif budaya Nusantara',
-        'icon': Icons.quiz_outlined,
-        'page': const QuizPage(),
-      },
+      // {
+      //   'title': 'Tahu Adat Nggak?',
+      //   'subtitle': 'Kuis interaktif budaya Nusantara',
+      //   'icon': Icons.quiz_outlined,
+      //   'page': const QuizPage(),
+      // },
       {
         'title': 'Acak Kursi Tamu',
         'subtitle': 'Guncang HP untuk mengacak',

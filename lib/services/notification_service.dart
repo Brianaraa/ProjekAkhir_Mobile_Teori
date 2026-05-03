@@ -10,7 +10,6 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  // Channel ID & Name
   static const String _channelId = 'hagati_channel';
   static const String _channelName = 'Hagati Notifikasi';
 

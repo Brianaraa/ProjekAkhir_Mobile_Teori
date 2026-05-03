@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:projek_akhir/auth/auth_storage.dart';
+import 'package:projek_akhir/pages/login_page.dart';
+
 import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/home_page.dart';
 import 'package:projek_akhir/pages/profile_page.dart';
 import 'package:projek_akhir/pages/search_page.dart';
-
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -14,6 +17,7 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  Timer? _sessionTimer;
 
   // Pages harus sinkron 1:1 dengan nav items di bawah
   final List<Widget> _pages = [
@@ -22,6 +26,54 @@ class _MainNavigationState extends State<MainNavigation> {
     const ConverterPage(), // 2 → Konversi
     const ProfilePage(),   // 3 → Profil
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startSessionChecker();
+  }
+
+  void _startSessionChecker() {
+    // Cek session setiap 5 menit
+    _sessionTimer = Timer.periodic(const Duration(minutes: 5), (_) async {
+      final isValid = await AuthStorage.isSessionValid();
+      if (!isValid && mounted) {
+        _autoLogout();
+      }
+    });
+  }
+
+  Future<void> _autoLogout() async {
+    await AuthStorage.deleteSession();
+
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sesi login telah berakhir. Silakan masuk kembali.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  // Fungsi ini bisa kamu panggil dari halaman Profile untuk Logout Manual
+  Future<void> logout() async {
+    _sessionTimer?.cancel();
+    await _autoLogout();
+  }
+
+  @override
+  void dispose() {
+    _sessionTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

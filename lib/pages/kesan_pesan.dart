@@ -211,63 +211,169 @@ class _KesanPesanPageState extends State<KesanPesanPage> {
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFFd4af37).withOpacity(0.2),
+                    child: Text(
+                      item.namaUser.isNotEmpty
+                          ? item.namaUser[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Color(0xFF884513),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.namaUser,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+
+                        Text(
+                          date,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (isOwner)
+                    PopupMenuButton<String>(
+                      color: const Color(0xfffcf9f8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showFormDialog(item: item);
+                        } else if (value == 'delete') {
+                          _deleteItem(item);
+                        }
+                      },
+
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 18, color: Color(0xFFd4af37)),
+                              SizedBox(width: 8),
+                              Text(
+                                'Edit',
+                                style: TextStyle(color: Color(0xFF884513)),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, size: 18, color: Colors.redAccent),
+                              SizedBox(width: 8),
+                              Text(
+                                'Hapus',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      icon: const Icon(
+                        Icons.more_vert,
+                        color: Color(0xFF884513),
+                      ),
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFf9f6f2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      backgroundColor: const Color(0xFFd4af37).withOpacity(0.2),
-                      child: Text(
-                        item.namaUser.isNotEmpty ? item.namaUser[0].toUpperCase() : '?', 
-                        style: const TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold)
+                    const Text(
+                      'Kesan',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFd4af37),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.namaUser, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text(date, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  
-                    if (isOwner) ...[
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 24),
-                        onPressed: () => _showFormDialog(item: item),
-                        tooltip: 'Edit',
-                      ),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
-                        onPressed: () => _deleteItem(item),
-                        tooltip: 'Hapus',
-                      ),
-                    ],
+                    const SizedBox(height: 4),
+                    Text(item.pesan),
                   ],
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Divider(thickness: 0.5),
+              ),
+
+              const SizedBox(height: 10),
+
+              // ================= SARAN =================
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFf9f6f2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                _buildContentSection("Kesan", item.pesan),
-                const SizedBox(height: 12),
-                _buildContentSection("Saran", item.saran),
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Saran',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFd4af37),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(item.saran),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },

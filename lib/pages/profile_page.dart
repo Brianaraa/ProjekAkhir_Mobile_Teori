@@ -59,11 +59,38 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // buat upload fto
   Future<void> _uploadProfilePhoto() async {
     final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFFd4af37)),
+                title: const Text('Ambil dari Kamera'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo, color: Color(0xFFd4af37)),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
     final XFile? pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
       imageQuality: 75,
       maxWidth: 800,
     );
@@ -109,7 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengupload foto: ${e.toString()}'),
+            content: Text('Gagal upload: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -133,6 +160,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  //buat edit
   void _showEditDialog() {
     final nameController = TextEditingController(text: _userName);
     final emailController = TextEditingController(text: _userEmail);
@@ -396,8 +424,8 @@ class _ProfilePageState extends State<ProfilePage> {
               // ini button edit ptofilr
               _buildMenuCard(
                 icon: Icons.person,
-                iconColor: Colors.brown,
-                iconBgColor: const Color(0xFFFFE082),
+                iconColor: Color(0xFFd4af37),
+                iconBgColor: Color(0xFFd4af37),
                 title: "Edit Profile",
                 onTap: _showEditDialog,
               ),
@@ -406,7 +434,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               _buildMenuCard(
                 icon: Icons.feedback_outlined,
-                iconColor: const Color(0xFFd4af37),
+                iconColor: Color(0xFFd4af37),
                 iconBgColor: const Color(0xFFd4af37).withOpacity(0.15),
                 title: "Saran & Kesan TPM",
                 onTap: _goToKesanPesanPage,
@@ -414,10 +442,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const SizedBox(height: 12),
 
-              // Menu Notifikasi
+              // menu notif
               _buildMenuCard(
                 icon: Icons.bookmark,
-                iconColor: const Color(0xFFd4af37),
+                iconColor: Color(0xFFd4af37),
                 iconBgColor: const Color(0xFFd4af37).withOpacity(0.15),
                 title: "Bookmark",
                 onTap: _goToBookmarkPage,
@@ -444,39 +472,47 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuCard({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-    required String title,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildMenuCard({required IconData icon, required Color iconColor, required Color iconBgColor, required String title, required VoidCallback onTap,}) {
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        elevation: 0,
-        color: Colors.grey.shade100,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconBgColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 26),
-              ),
+              Icon(icon, color: iconColor, size: 24),
+
               const SizedBox(width: 16),
+
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, size: 18, color: Colors.grey),
+
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: Colors.grey,
+              ),
             ],
           ),
         ),

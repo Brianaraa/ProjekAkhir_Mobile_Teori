@@ -1,50 +1,53 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthStorage {
+  static const _storage = FlutterSecureStorage();
+
   static const _tokenKey = 'auth_token';
   static const _expiredAtKey = 'auth_expired_at';
+  static const _biometricKey = 'biometric_enabled';
 
-  /// Simpan token + waktu expired (24 jam)
+  /// Simpan session
   static Future<void> saveSession({
     required String token,
     required DateTime expiredAt,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await prefs.setString(_expiredAtKey, expiredAt.toIso8601String());
+    await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(
+      key: _expiredAtKey,
+      value: expiredAt.toIso8601String(),
+    );
   }
 
-  /// Cek apakah session masih valid (token ada + belum expired)
+  /// Cek session valid
   static Future<bool> isSessionValid() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey);
-    final expiredStr = prefs.getString(_expiredAtKey);
+    final token = await _storage.read(key: _tokenKey);
+    final expiredStr = await _storage.read(key: _expiredAtKey);
 
     if (token == null || expiredStr == null) return false;
 
     final expiredAt = DateTime.parse(expiredStr);
-    final now = DateTime.now();
-
-    // Jika sekarang jam 13.00 dan expired jam 15.00, maka True (masih valid)
-    return now.isBefore(expiredAt); 
-  } catch (e) {
-    print('Kesalahan baca session: $e'); // Tambahkan ini untuk cek error
-    return false;
-  }
-}
-
-  /// Hapus session (logout)
-  static Future<void> deleteSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_expiredAtKey);
-    print('🗑️ [SESSION] Token & expired dihapus');
+    return DateTime.now().isBefore(expiredAt);
   }
 
-  /// Opsional: ambil token saja
+  /// Ambil token
   static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    return await _storage.read(key: _tokenKey);
+  }
+
+  /// Logout
+  static Future<void> deleteSession() async {
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _expiredAtKey);
+  }
+
+  /// Biometric ON/OFF
+  static Future<void> setBiometric(bool value) async {
+    await _storage.write(key: _biometricKey, value: value.toString());
+  }
+
+  static Future<bool> isBiometricEnabled() async {
+    final value = await _storage.read(key: _biometricKey);
+    return value == 'true';
   }
 }

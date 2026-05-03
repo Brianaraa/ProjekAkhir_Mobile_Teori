@@ -4,9 +4,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final VendorModel? initialVendor;
+  const MapPage({super.key, this.initialVendor});
+  
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -20,13 +24,62 @@ class _MapPageState extends State<MapPage> {
   VendorModel? _selectedVendor;
   bool _isLoading = true;
 
+  Position? _currentPosition;
+  StreamSubscription<Position>? _positionStream;
+
   // Default center: Yogyakarta
   static const LatLng _defaultCenter = LatLng(-7.7956, 110.3695);
 
   @override
   void initState() {
     super.initState();
-    _loadVendors();
+    _initLocation();
+    _loadVendors().then((_) {
+      if (widget.initialVendor != null) {
+        _onMarkerTap(widget.initialVendor!);
+      }
+    });
+  }
+
+  Future<void> _initLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.deniedForever) return;
+    
+
+    // 🔥 STREAM (REALTIME)
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5, // update tiap 5 meter
+      ),
+    ).listen((Position position) {
+      setState(() {
+        _currentPosition = position;
+        print('📍 posisi: ${position.latitude}, ${position.longitude}');
+      });
+    });
+  }
+
+  LatLng get _initialCenter {
+    if (widget.initialVendor != null) {
+      return LatLng(
+        widget.initialVendor!.latitude,
+        widget.initialVendor!.longitude,
+      );
+    }
+    return _defaultCenter;
+  }
+
+  double get _initialZoom {
+    return widget.initialVendor != null ? 16.5 : 13.0;
   }
 
   Future<void> _loadVendors() async {
@@ -78,8 +131,8 @@ class _MapPageState extends State<MapPage> {
               : FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    initialCenter: _defaultCenter,
-                    initialZoom: 13.0,
+                    initialCenter: _initialCenter,
+                    initialZoom: _initialZoom,
                     onTap: (_, __) => _closeBottomSheet(),
                   ),
                   children: [
@@ -91,42 +144,55 @@ class _MapPageState extends State<MapPage> {
 
                     // Marker layer
                     MarkerLayer(
-                      markers: _vendors.map((vendor) {
-                        final isSelected = _selectedVendor?.uuid == vendor.uuid;
-                        return Marker(
-                          point: LatLng(vendor.latitude, vendor.longitude),
-                          width: isSelected ? 52 : 42,
-                          height: isSelected ? 52 : 42,
-                          child: GestureDetector(
-                            onTap: () => _onMarkerTap(vendor),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF884513)
-                                    : const Color(0xFFd4af37),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: isSelected ? 3 : 2,
+                      markers: [
+                        // Vendor markers
+                        ..._vendors.map((vendor) {
+                          final isSelected = _selectedVendor?.uuid == vendor.uuid;
+
+                          return Marker(
+                            point: LatLng(vendor.latitude, vendor.longitude),
+                            width: isSelected ? 52 : 42,
+                            height: isSelected ? 52 : 42,
+                            child: GestureDetector(
+                              onTap: () => _onMarkerTap(vendor),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF884513)
+                                      : const Color(0xFFd4af37),
+                                  shape: BoxShape.circle,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
+                                child: const Icon(Icons.location_on, color: Colors.white),
                               ),
-                              child: Icon(
-                                Icons.location_on,
-                                color: Colors.white,
-                                size: isSelected ? 26 : 20,
+                            ),
+                          );
+                        }),
+
+                        // 🔥 USER LOCATION MARKER
+                        if (_currentPosition != null)
+                          Marker(
+                            point: LatLng(
+                              _currentPosition!.latitude,
+                              _currentPosition!.longitude,
+                            ),
+                            width: 50,
+                            height: 50,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.my_location,
+                                  color: Colors.blue,
+                                  size: 28,
+                                ),
                               ),
                             ),
                           ),
-                        );
-                      }).toList(),
+                      ],
                     ),
                   ],
                 ),
@@ -325,6 +391,12 @@ class _MapPageState extends State<MapPage> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
   }
 }
 

@@ -38,7 +38,7 @@ class _HomePageState extends State<HomePage> {
 
   
 
-  // ── Kalender Jawa ──────────────────────────────────────────
+  //kalender jawa
   static const List<String> _pasaran = [
     'Kliwon', 'Legi', 'Pahing', 'Pon', 'Wage'
   ];
@@ -146,22 +146,17 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final uuid = prefs.getString('user_id');
 
-      if (uuid == null || uuid.isEmpty) {
-        setState(() => _userName = 'User');
-        return;
-      }
-
-      final name = await UserService.getUserNameByUuid(uuid);
+      final name = prefs.getString('nama');
 
       if (mounted) {
         setState(() {
-          _userName = name ?? 'User';
+          _userName = (name != null && name.isNotEmpty) ? name : 'User';
         });
       }
     } catch (e) {
       print('Error load user name: $e');
+
       if (mounted) {
         setState(() => _userName = 'User');
       }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
+import 'package:projek_akhir/auth/biometric.dart';
 import 'package:projek_akhir/pages/login_page.dart';
 import 'package:projek_akhir/pages/main_navigation.dart';   // ← Tambahkan import ini
 
@@ -14,39 +15,57 @@ class AuthGate extends StatefulWidget {
   State<AuthGate> createState() => _AuthGateState();
 }
 
-class _AuthGateState extends State<AuthGate> {
-  bool _isLoading = true;
-  bool _isLoggedIn = false;
+  class _AuthGateState extends State<AuthGate> {
+    bool _isLoading = true;
+    bool _isLoggedIn = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _checkSession();
-  }
+    @override
+    void initState() {
+      super.initState();
+      _checkSession();
+    }
 
-  Future<void> _checkSession() async {
+    Future<void> _checkSession() async {
     final isValid = await AuthStorage.isSessionValid();
 
-    if (isValid) {
-      final currentToken = await AuthStorage.getToken();
-      
-      if (currentToken != null) {
-        final newExpiry = DateTime.now().add(const Duration(hours: 24));
-        
-        await AuthStorage.saveSession(
-          token: currentToken, 
-          expiredAt: newExpiry
-        );
-        print('🔄 Sesi diperpanjang sampai: $newExpiry');
+    if (!isValid) {
+      setState(() {
+        _isLoggedIn = false;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final biometricEnabled = await AuthStorage.isBiometricEnabled();
+
+    if (biometricEnabled) {
+      final success = await BiometricService.authenticate();
+
+      if (!success) {
+        setState(() {
+          _isLoggedIn = false;
+          _isLoading = false;
+        });
+        return;
       }
     }
 
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = isValid;
-        _isLoading = false;
-      });
+    if (!isValid) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LoginPage(isSessionExpired: true),
+          ),
+        );
+      }
+      return;
     }
+
+    setState(() {
+      _isLoggedIn = true;
+      _isLoading = false;
+    });
   }
 
   @override

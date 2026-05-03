@@ -8,6 +8,7 @@ import 'package:projek_akhir/services/layanan_services.dart';
 import 'package:projek_akhir/services/review_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:projek_akhir/pages/map_page.dart';
 
 class VendorDetailPage extends StatefulWidget {
   final VendorModel vendor;
@@ -69,6 +70,8 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     _loadData();
     _loadBookmark();
   }
+
+  
 
   Future<void> _loadData() async {
     setState(() {
@@ -133,9 +136,26 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
   }
 
   Future<void> _openSosmed() async {
-    final url = Uri.tryParse(widget.vendor.sosmed ?? '');
-    if (url != null && await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    final username = widget.vendor.sosmed;
+
+    if (username == null || username.isEmpty) return;
+
+    final cleanUsername = username
+        .replaceAll('@', '')
+        .replaceAll('https://www.instagram.com/', '')
+        .replaceAll('instagram.com/', '');
+
+    final appUri = Uri.parse('instagram://user?username=$cleanUsername');
+    final webUri = Uri.parse('https://www.instagram.com/$cleanUsername');
+
+    try {
+      if (await canLaunchUrl(appUri)) {
+        await launchUrl(appUri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      print('Error buka IG: $e');
     }
   }
 
@@ -503,6 +523,16 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                     icon: Icons.location_on_outlined,
                     title: 'ALAMAT',
                     content: widget.vendor.alamat,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MapPage(
+                            initialVendor: widget.vendor,
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 12),
