@@ -36,6 +36,6 @@ class BookmarkLocalService {
       whereArgs: [vendorId],
     );
 
-    print('🗑️ LOCAL: Bookmark dengan vendor_id $vendorId berhasil dihapus');
+    print('LOCAL: Bookmark dengan vendor_id $vendorId berhasil dihapus');
   }
 }

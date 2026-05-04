@@ -45,7 +45,7 @@ class ReviewService {
 
       await _updateVendorRatingSummary(vendorId);
     } catch (e) {
-      print('❌ Error addOrUpdateReview: $e');
+      print('Error addOrUpdateReview: $e');
       rethrow;
     }
   }
@@ -80,7 +80,7 @@ class ReviewService {
         'rating_count': count,
       }).eq('uuid', vendorId);
     } catch (e) {
-      print('❌ Error updateVendorRatingSummary: $e');
+      print('rror updateVendorRatingSummary: $e');
     }
   }
 
@@ -93,8 +93,8 @@ class ReviewService {
           .single();
 
       return (result['rating_avg'] as num?)?.toDouble();
-    } catch (e) {
-      print('❌ Error getVendorRating: $e');
+    } catch (e){
+      print('Error getVendorRating: $e');
       return null;
     }
   }
@@ -117,13 +117,13 @@ class ReviewService {
           .eq('id_vendor', vendorId)
           .order('created_at', ascending: false);
 
-      print('✅ Response reviews: ${response.length}');
+      print('Response reviews: ${response.length}');
 
       return (response as List)
           .map((item) => ReviewModel.fromMap(item))
           .toList();
     } catch (e) {
-      print('❌ Error getReviewsByVendor: $e');
+      print('Error getReviewsByVendor: $e');
       return [];
     }
   }

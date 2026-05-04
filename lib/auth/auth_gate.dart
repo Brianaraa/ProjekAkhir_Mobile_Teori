@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
 import 'package:projek_akhir/auth/biometric.dart';
 import 'package:projek_akhir/pages/login_page.dart';
-import 'package:projek_akhir/pages/main_navigation.dart';   // ← Tambahkan import ini
+import 'package:projek_akhir/pages/main_navigation.dart'; 
 
 Future<bool> checkSession() async {
   return await AuthStorage.isSessionValid();
@@ -76,7 +76,6 @@ class AuthGate extends StatefulWidget {
       );
     }
     
-    // PERUBAHAN UTAMA DI SINI:
     return _isLoggedIn ? const MainNavigation() : const LoginPage();
   }
 }

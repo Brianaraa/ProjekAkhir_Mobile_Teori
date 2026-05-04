@@ -7,7 +7,7 @@ class AuthStorage {
   static const _expiredAtKey = 'auth_expired_at';
   static const _biometricKey = 'biometric_enabled';
 
-  /// Simpan session
+  //simpen session
   static Future<void> saveSession({
     required String token,
     required DateTime expiredAt,
@@ -19,7 +19,7 @@ class AuthStorage {
     );
   }
 
-  /// Cek session valid
+  ///cek session valid
   static Future<bool> isSessionValid() async {
     final token = await _storage.read(key: _tokenKey);
     final expiredStr = await _storage.read(key: _expiredAtKey);
@@ -30,18 +30,16 @@ class AuthStorage {
     return DateTime.now().isBefore(expiredAt);
   }
 
-  /// Ambil token
   static Future<String?> getToken() async {
     return await _storage.read(key: _tokenKey);
   }
 
-  /// Logout
+  // logout
   static Future<void> deleteSession() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _expiredAtKey);
   }
-
-  /// Biometric ON/OFF
+  
   static Future<void> setBiometric(bool value) async {
     await _storage.write(key: _biometricKey, value: value.toString());
   }

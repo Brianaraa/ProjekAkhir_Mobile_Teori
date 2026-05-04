@@ -1,12 +1,11 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';           // ← Untuk SHA-256
+import 'package:crypto/crypto.dart';    
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
   final database = Supabase.instance.client.from('users');
 
-  // Hash password menggunakan SHA-256 + Salt
   String _hashPassword(String password) {
     final salt = DateTime.now().millisecondsSinceEpoch.toString();
     final bytes = utf8.encode(password + salt);
@@ -14,7 +13,6 @@ class UserService {
     return '${digest.toString()}:$salt'; 
   }
 
-  // Verifikasi password
   bool _verifyPassword(String enteredPassword, String storedHash) {
     try {
       final parts = storedHash.split(':');
@@ -130,7 +128,7 @@ class UserService {
         return false;
       }
 
-      print('✅ Profil berhasil diupdate');
+      print('Profil berhasil diupdate');
       return true;
 
     } catch (e) {

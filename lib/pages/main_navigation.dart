@@ -63,7 +63,6 @@ class _MainNavigationState extends State<MainNavigation> {
     }
   }
 
-  // Fungsi ini bisa kamu panggil dari halaman Profile untuk Logout Manual
   Future<void> logout() async {
     _sessionTimer?.cancel();
     await _autoLogout();

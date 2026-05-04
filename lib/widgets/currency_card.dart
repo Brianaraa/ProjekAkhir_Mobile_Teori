@@ -11,7 +11,7 @@ class CurrencyCard extends StatelessWidget {
     required this.inputAmount,
   });
 
-  // Flag emoji berdasarkan kode mata uang
+  // flag emoji berdasarkan kode mata uang
   String get _flag {
     switch (rate.code) {
       case 'MYR': return '🇲🇾';

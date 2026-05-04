@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // Tambahkan import ini
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:projek_akhir/models/currency_model.dart';
 
 class CurrencyService {
@@ -10,7 +10,6 @@ class CurrencyService {
   // URL untuk mengambil rate terbaru dengan base IDR (Rupiah)
   String get _baseUrl => 'https://v6.exchangerate-api.com/v6/$_apiKey/latest/IDR';
 
-  // Mata uang wajib TPM: minimal 3, di sini kita sediakan 4
   static const Map<String, String> targetCurrencies = {
     'MYR': 'Ringgit Malaysia', // Relevan untuk TKI/Keluarga di Malaysia
     'SAR': 'Riyal Arab Saudi',  // Relevan untuk konteks Haji/Hijriyah
@@ -31,7 +30,6 @@ class CurrencyService {
         final data = jsonDecode(response.body);
         final rates = data['conversion_rates'] as Map<String, dynamic>;
 
-        // Mapping hasil API ke model data kita
         return targetCurrencies.entries
             .map((e) => CurrencyModel.fromApiJson(rates, e.key, e.value))
             .toList();
@@ -40,7 +38,7 @@ class CurrencyService {
       }
     } catch (e) {
       print('CurrencyService Error: $e');
-      return []; // Kembalikan list kosong jika error
+      return [];
     }
   }
 }

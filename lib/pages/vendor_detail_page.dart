@@ -71,8 +71,6 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     _loadBookmark();
   }
 
-  
-
   Future<void> _loadData() async {
     setState(() {
       isLoadingReviews = true;
@@ -104,11 +102,11 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
       isBookmarked = allBookmarks.any((b) => b.vendorId == widget.vendor.uuid);
     });
   } catch (e) {
-    print('❌ Error loading bookmark: $e');
+    print('Error loading bookmark: $e');
   }
 
     } catch (e) {
-      print('❌ Error loading data: $e');
+      print('Error loading data: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -131,7 +129,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
         });
       }
     } catch (e) {
-      print('❌ Error load bookmark: $e');
+      print('Error load bookmark: $e');
     }
   }
 

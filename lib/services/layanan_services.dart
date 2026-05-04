@@ -31,7 +31,7 @@ class LayananService {
 
       return response != null ? LayananModel.fromJson(response) : null;
     } catch (e) {
-      print('❌ Error fetching layanan by id: $e');
+      print('Error fetching layanan by id: $e');
       return null;
     }
   }

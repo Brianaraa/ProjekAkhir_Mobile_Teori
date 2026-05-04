@@ -62,7 +62,7 @@ class BookmarkRepository {
         await remote.removeBookmark(vendorId).timeout(const Duration(seconds: 5));
       }
     } catch (e) {
-      print('⚠️ Gagal hapus remote (lanjut hapus lokal): $e');
+      print('Gagal hapus remote (lanjut hapus lokal): $e');
     }
 
     await local.deleteByVendorId(vendorId); 

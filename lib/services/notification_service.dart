@@ -19,7 +19,7 @@ class NotificationService {
 
     final androidImplementation = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-    await androidImplementation?.requestNotificationsPermission();   // ← Pent
+    await androidImplementation?.requestNotificationsPermission(); 
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -36,7 +36,7 @@ class NotificationService {
 
     await _plugin.initialize(initSettings);
 
-    // Buat notification channel untuk Android 8+
+    // buat notification channel untuk Android 8+
     await _plugin
     .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()
@@ -62,25 +62,16 @@ class NotificationService {
         iOS: DarwinNotificationDetails(),
       );
 
-  // Notifikasi langsung / seketika
-  Future<void> showNow({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
+  // notif langsung 
+  Future<void> showNow({ required int id, required String title, required String body}) async {
     await _plugin.show(id, title, body, _details);
   }
 
-  // Notifikasi terjadwal — misal H-1 sebelum hajatan
-  Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-    required DateTime scheduledDate,
-  }) async {
+  // notif terjadwal
+  Future<void> scheduleNotification({required int id, required String title, required String body, required DateTime scheduledDate}) async {
     final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
-    // Jangan jadwalkan jika waktu sudah lewat
+    // apus notif yang udah lewat
     if (tzDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
     await _plugin.zonedSchedule(
@@ -95,17 +86,17 @@ class NotificationService {
     );
   }
 
-  // Batalkan notifikasi berdasarkan ID
+  // batal notif dari ID
   Future<void> cancel(int id) async {
     await _plugin.cancel(id);
   }
 
-  // Batalkan semua notifikasi
+  // batalkan notif
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
   }
 
-  // Cek semua notifikasi yang sudah terjadwal (untuk debugging)
+  // cek semua notifikasi yang sudah terjadwal (untuk debugging)
   Future<List<PendingNotificationRequest>> getPending() async {
     return await _plugin.pendingNotificationRequests();
   }

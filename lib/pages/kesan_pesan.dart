@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:projek_akhir/models/kesan_pesan_model.dart';
 import 'package:projek_akhir/services/kesan_pesan_service.dart';
 
@@ -12,10 +11,10 @@ class KesanPesanPage extends StatefulWidget {
 
 class _KesanPesanPageState extends State<KesanPesanPage> {
   final KesanPesanService _service = KesanPesanService();
-  List<KesanPesanModel> _data = [];
+
+  KesanPesanModel? _data;
   bool _isLoading = true;
   String? _errorMessage;
-  String? _currentUserId;
 
   @override
   void initState() {
@@ -29,146 +28,16 @@ class _KesanPesanPageState extends State<KesanPesanPage> {
       _errorMessage = null;
     });
 
-    try {
-      final result = await _service.getAllKesanPesan();
-      final userId = await _service.getCurrentUserId();
-      
-      setState(() {
-        _currentUserId = userId;
-      }); 
+    final result = await _service.getAllKesanPesan();
 
-      setState(() {
-        _data = result;
-        _currentUserId = userId;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Gagal memuat data kesan & saran';
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _showFormDialog({KesanPesanModel? item}) {
-    final pesanController = TextEditingController(text: item?.pesan ?? '');
-    final saranController = TextEditingController(text: item?.saran ?? '');
-    final isEdit = item != null;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xfffcf9f8),
-        title: Text(
-          isEdit ? 'Edit Kesan & Saran' : 'Tambah Kesan & Saran',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF884513)),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: pesanController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Kesan',
-                  hintText: 'Apa kesanmu selama kuliah?',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              TextField(
-                controller: saranController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Saran',
-                  hintText: 'Ada saran perbaikan?',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
-          ),
-
-          ElevatedButton(
-            onPressed: () async {
-              if (pesanController.text.trim().isEmpty || saranController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Field tidak boleh kosong')),
-                );
-                return;
-              }
-
-              try {
-                if (isEdit) {
-                  await _service.updateKesanPesan(
-                    id: item!.id,
-                    pesan: pesanController.text.trim(),
-                    saran: saranController.text.trim(),
-                  );
-                } else {
-                  await _service.addKesanPesan(
-                    pesan: pesanController.text.trim(),
-                    saran: saranController.text.trim(),
-                  );
-                }
-                Navigator.pop(context);
-                _fetchData();
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFd4af37),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text(isEdit ? 'Update' : 'Simpan', style: const TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _deleteItem(KesanPesanModel item) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Hapus Data?'),
-        content: const Text('Tindakan ini tidak dapat dibatalkan.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await _service.deleteKesanPesan(item.id);
-        _fetchData();
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+    setState(() {
+      if (result.isNotEmpty) {
+        _data = result.first;
+      } else {
+        _errorMessage = 'Data kosong';
       }
-    }
+      _isLoading = false;
+    });
   }
 
   @override
@@ -176,231 +45,108 @@ class _KesanPesanPageState extends State<KesanPesanPage> {
     return Scaffold(
       backgroundColor: const Color(0xfffcf9f8),
       appBar: AppBar(
-        title: const Text('Kesan & Saran TPM', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF884513))),
+        title: const Text(
+          'Kesan & Saran TPM',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF884513),
+          ),
+        ),
         backgroundColor: const Color(0xfffcf9f8),
         elevation: 0,
         centerTitle: true,
       ),
-
-      body: RefreshIndicator(
-        onRefresh: _fetchData,
-        color: const Color(0xFFd4af37),
-        child: _buildBody(),
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showFormDialog(),
-        backgroundColor: const Color(0xFFd4af37),
-        child: const Icon(Icons.add, color: Color(0xFF884513)),
-      ),
+      body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator(color: Color(0xFFd4af37)));
-    if (_errorMessage != null) return Center(child: Text(_errorMessage!));
-    if (_data.isEmpty) return _buildEmptyState();
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFd4af37),
+        ),
+      );
+    }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: _data.length,
-      itemBuilder: (context, index) {
-        final item = _data[index];
-        final date = DateFormat('dd MMM yyyy • HH:mm').format(item.createdAt);
-        final bool isOwner = _currentUserId == item.userId; 
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!));
+    }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFFd4af37).withOpacity(0.2),
-                    child: Text(
-                      item.namaUser.isNotEmpty
-                          ? item.namaUser[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        color: Color(0xFF884513),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.namaUser,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-
-                        Text(
-                          date,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  if (isOwner)
-                    PopupMenuButton<String>(
-                      color: const Color(0xfffcf9f8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showFormDialog(item: item);
-                        } else if (value == 'delete') {
-                          _deleteItem(item);
-                        }
-                      },
-
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, size: 18, color: Color(0xFFd4af37)),
-                              SizedBox(width: 8),
-                              Text(
-                                'Edit',
-                                style: TextStyle(color: Color(0xFF884513)),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, size: 18, color: Colors.redAccent),
-                              SizedBox(width: 8),
-                              Text(
-                                'Hapus',
-                                style: TextStyle(color: Colors.redAccent),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: Color(0xFF884513),
-                      ),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFf9f6f2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Kesan',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFd4af37),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(item.pesan),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // ================= SARAN =================
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFf9f6f2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Saran',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFd4af37),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(item.saran),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: _buildCard(_data!),
     );
   }
 
-  Widget _buildContentSection(String label, String content) {
+  Widget _buildCard(KesanPesanModel item) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSection(
+            icon: Icons.sentiment_satisfied_alt,
+            title: 'Kesan',
+            content: item.pesan,
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          _buildSection(
+            icon: Icons.lightbulb_outline,
+            title: 'Saran',
+            content: item.saran,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection({
+    required IconData icon,
+    required String title,
+    required String content,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFd4af37), fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(content, style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4)),
+        Row(
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFFd4af37)),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF884513),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
       ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.chat_bubble_outline_rounded, size: 100, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          const Text('Belum ada pesan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
-        ],
-      ),
     );
   }
 }

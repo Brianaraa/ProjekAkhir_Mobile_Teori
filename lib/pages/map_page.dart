@@ -53,8 +53,6 @@ class _MapPageState extends State<MapPage> {
 
     if (permission == LocationPermission.deniedForever) return;
     
-
-    // 🔥 STREAM (REALTIME)
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -106,7 +104,7 @@ class _MapPageState extends State<MapPage> {
 
   void _onMarkerTap(VendorModel vendor) {
     setState(() => _selectedVendor = vendor);
-    // Geser peta ke marker yang dipilih
+    // geser peta ke marker yang dipilih
     _mapController.move(
       LatLng(vendor.latitude, vendor.longitude),
       15.0,
@@ -122,7 +120,6 @@ class _MapPageState extends State<MapPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // ── PETA FULLSCREEN ──
           _isLoading
               ? const Center(
                   child: CircularProgressIndicator(
@@ -142,7 +139,6 @@ class _MapPageState extends State<MapPage> {
                       userAgentPackageName: 'com.example.projek_akhir',
                     ),
 
-                    // Marker layer
                     MarkerLayer(
                       markers: [
                         // Vendor markers
@@ -169,7 +165,7 @@ class _MapPageState extends State<MapPage> {
                           );
                         }),
 
-                        // 🔥 USER LOCATION MARKER
+                        // user
                         if (_currentPosition != null)
                           Marker(
                             point: LatLng(
@@ -197,7 +193,6 @@ class _MapPageState extends State<MapPage> {
                   ],
                 ),
 
-          // ── SEARCH BAR ──
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
@@ -214,20 +209,18 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ],
               ),
+
+              // dari vendor
               child: TextField(
                 readOnly: true,
                 onTap: () async {
-                  // 2. Tambahkan variabel untuk menampung hasil kembalian dari halaman search
                   final VendorModel? selectedFromSearch = await Navigator.of(context).push<VendorModel>(
                     MaterialPageRoute(
                       builder: (_) => const _VendorSearchDelegate(),
                     ),
                   );
 
-                  // 3. Jika user memilih vendor (tidak menekan tombol back tanpa memilih)
                   if (selectedFromSearch != null && mounted) {
-                    // Panggil fungsi _onMarkerTap yang sudah Anda buat sebelumnya
-                    // Fungsi ini otomatis menggeser peta dan memunculkan bottom sheet
                     _onMarkerTap(selectedFromSearch);
                   }
                 },
@@ -245,7 +238,6 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // ── COUNTER VENDOR ──
           Positioned(
             bottom: _selectedVendor != null ? 220 : 20,
             left: 16,
@@ -272,7 +264,6 @@ class _MapPageState extends State<MapPage> {
             ),
           ),
 
-          // ── BOTTOM SHEET VENDOR ──
           if (_selectedVendor != null)
             Positioned(
               bottom: 0,

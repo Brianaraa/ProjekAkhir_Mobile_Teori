@@ -47,7 +47,7 @@ class CountdownService {
 
       final newCountdown = CountdownModel.fromMap(response);
 
-      // Schedule notifikasi H-1 secara otomatis
+      // schedule notifikasi H-1 secara otomatis
       await scheduleH1Reminder(newCountdown);
 
       print('Countdown ditambahkan dan notifikasi H-1 dijadwalkan');
