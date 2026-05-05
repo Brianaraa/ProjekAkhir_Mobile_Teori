@@ -5,7 +5,7 @@ import 'package:projek_akhir/models/currency_model.dart';
 
 class CurrencyService {
   // Ambil API Key dan Base URL dari .env atau definisikan secara dinamis
-  final String _apiKey = dotenv.env['EXCHANGERATE_API_KEY'] ?? '';
+  String get _apiKey => dotenv.env['EXCHANGERATE_API_KEY'] ?? '';
   
   // URL untuk mengambil rate terbaru dengan base IDR (Rupiah)
   String get _baseUrl => 'https://v6.exchangerate-api.com/v6/$_apiKey/latest/IDR';

@@ -67,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
         expiredAt: DateTime.now().add(const Duration(minutes: 10)), //ganti jam disini
       );
 
-      await AuthStorage.setBiometric(true);
+
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(

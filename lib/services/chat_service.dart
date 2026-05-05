@@ -10,7 +10,7 @@ class ChatService {
   print('Debug API Key: $apiKey'); // Lihat di konsol apakah kuncinya muncul
   
   _model = GenerativeModel(
-    model: 'gemini-1.5-flash-latest',
+    model: 'gemini-1.5-flash',
     apiKey: apiKey,
       systemInstruction: Content.system(
         '''Kamu adalah Bli-AI, asisten digital yang ahli dalam adat istiadat 

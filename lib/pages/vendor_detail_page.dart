@@ -136,7 +136,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
   Future<void> _openSosmed() async {
     final username = widget.vendor.sosmed;
 
-    if (username == null || username.isEmpty) return;
+    if (username.isEmpty) return;
 
     final cleanUsername = username
         .replaceAll('@', '')
@@ -508,10 +508,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
 
                   const SizedBox(height: 16),
 
-                  if (widget.vendor.deskripsi != null &&
-                      widget.vendor.deskripsi!.isNotEmpty)
+                  if (widget.vendor.deskripsi.isNotEmpty)
                     Text(
-                      widget.vendor.deskripsi!,
+                      widget.vendor.deskripsi,
                       style: const TextStyle(fontSize: 15, height: 1.5),
                     ),
 
@@ -535,12 +534,11 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
 
                   const SizedBox(height: 12),
 
-                  if (widget.vendor.sosmed != null &&
-                      widget.vendor.sosmed!.isNotEmpty)
+                  if (widget.vendor.sosmed.isNotEmpty)
                     _infoCard(
                       icon: Icons.link,
                       title: 'SOSIAL MEDIA',
-                      content: widget.vendor.sosmed!,
+                      content: widget.vendor.sosmed,
                       onTap: _openSosmed,
                     ),
 
