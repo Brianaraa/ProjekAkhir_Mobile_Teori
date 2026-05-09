@@ -10,11 +10,15 @@ import 'package:projek_akhir/services/vendor_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
 import 'package:projek_akhir/pages/search_page.dart';
 import 'package:projek_akhir/pages/chat_page.dart';
+import 'package:projek_akhir/services/chat_service.dart';
 import 'package:projek_akhir/pages/converter_page.dart';
 import 'package:projek_akhir/pages/features_page.dart';
 import 'package:projek_akhir/pages/budget_estimator_page.dart';
 import 'package:projek_akhir/pages/map_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hijri/hijri_calendar.dart';
+import 'package:projek_akhir/services/weather_service.dart';
+import 'package:projek_akhir/models/weather_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,7 +40,13 @@ class _HomePageState extends State<HomePage> {
 
   final DateTime _today = DateTime.now();
 
-  
+  final _weatherService = WeatherService();
+  WeatherModel? _weather;
+  bool _isLoadingWeather = true;
+
+  final _chatService = ChatService();
+  String _aiSummary = '';
+  bool _isLoadingAI = true;
 
   //kalender jawa
   static const List<String> _pasaran = [
@@ -63,45 +73,9 @@ class _HomePageState extends State<HomePage> {
 
   String get _hariJawaHariIni => _hariJawa[_today.weekday % 7];
 
-  Map<String, int> get _hijriyah {
-    final jd = _julianDay(_today);
-    const epoch = 1948439.5;
-    final n = ((jd - epoch + 0.5) / 29.53059).floor();
-    int hy = ((n - 1) / 12).floor() + 1;
-    int hm = ((n - 1) % 12) + 1;
-    final ms = _julianDay(_hijriToGreg(hy, hm, 1));
-    int hd = (jd - ms).floor() + 1;
-    if (hd < 1) {
-      hm--;
-      if (hm < 1) { hm = 12; hy--; }
-      hd = 29;
-    }
-    return {'day': hd, 'month': hm, 'year': hy};
-  }
-
-  double _julianDay(DateTime d) {
-    int y = d.year, m = d.month;
-    if (m <= 2) { y--; m += 12; }
-    final a = (y / 100).floor();
-    final b = 2 - a + (a / 4).floor();
-    return (365.25 * (y + 4716)).floor() +
-        (30.6001 * (m + 1)).floor() + d.day + b - 1524.5;
-  }
-
-  DateTime _hijriToGreg(int hy, int hm, int hd) {
-    final n = hd +
-        (29.5001 * (hm - 1)).ceil() +
-        (hy - 1) * 354 +
-        (3 * ((hy - 1) / 30 + 1)).floor() ~/ 1 +
-        1948440 - 385;
-    int j = n + 1402;
-    int k = (j - 1) ~/ 1461 * 4 + 3;
-    final i = ((j - 1) % 1461) ~/ 365;
-    final l = i - (i ~/ 365);
-    final y1 = k ~/ 4 * 100 + l ~/ 36525;
-    final m1 = (l % 36525) ~/ 30 + 1;
-    final d1 = (l % 36525) % 30 + 1;
-    return DateTime(y1, m1, d1);
+  String get _hijriyahDate {
+    final hijri = HijriCalendar.now();
+    return '${hijri.hDay} ${_bulanHijriyah[hijri.hMonth]} ${hijri.hYear} H';
   }
 
   // ── Greeting ───────────────────────────────────────────────
@@ -116,29 +90,59 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchVendors();
-    _loadUserName();
-    _fetchMyCountdowns();
+    _initializeData();
   }
 
-  Future<void> _fetchMyCountdowns() async {
-    try {
-      setState(() => _isLoadingCountdown = true);
+  Future<void> _initializeData() async {
+    await _loadUserName();
+    
+    // Fetch data paralel
+    await Future.wait([
+      _fetchVendorsAsync(),
+      _fetchMyCountdownsAsync(),
+      _fetchWeatherAsync(),
+    ]);
 
-      final data = await _countdownService.getMyCountdowns();
+    // Jalankan AI setelah data terkumpul
+    await _generateAISummary();
+  }
 
-      // Karena service sudah difilter, tidak perlu filter lagi
-      data.sort((a, b) => a.tanggal.compareTo(b.tanggal)); // pastikan terurut
-
+  Future<void> _fetchVendorsAsync() async {
+    final data = await _vendorService.getVendors();
+    if (mounted) {
       setState(() {
-        _upcomingCountdowns = data;     // Langsung pakai
-        _isLoadingCountdown = false;
+        _vendors = data;
+        _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _fetchMyCountdownsAsync() async {
+    try {
+      final data = await _countdownService.getMyCountdowns();
+      data.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      if (mounted) {
+        setState(() {
+          _upcomingCountdowns = data;
+          _isLoadingCountdown = false;
+        });
+      }
     } catch (e) {
-      print('Error fetch countdowns: $e');
+      if (mounted) {
+        setState(() {
+          _upcomingCountdowns = [];
+          _isLoadingCountdown = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchWeatherAsync() async {
+    final weather = await _weatherService.getWeather('34.71.01.1001'); // Kode DIY
+    if (mounted) {
       setState(() {
-        _upcomingCountdowns = [];
-        _isLoadingCountdown = false;
+        _weather = weather;
+        _isLoadingWeather = false;
       });
     }
   }
@@ -146,30 +150,46 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadUserName() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-
       final name = prefs.getString('nama');
-
       if (mounted) {
         setState(() {
           _userName = (name != null && name.isNotEmpty) ? name : 'User';
         });
       }
     } catch (e) {
-      print('Error load user name: $e');
-
       if (mounted) {
         setState(() => _userName = 'User');
       }
     }
   }
 
-  Future<void> _fetchVendors() async {
-    final data = await _vendorService.getVendors();
-    setState(() {
-      _vendors = data;
-      _isLoading = false;
-    });
+  Future<void> _generateAISummary() async {
+    final cuacaStr = _weather != null 
+        ? '${_weather!.description}, Suhu: ${_weather!.temperature}°C' 
+        : 'Cerah Berawan';
+        
+    final countdownStr = _upcomingCountdowns.isNotEmpty 
+        ? 'User memiliki hajatan "${_upcomingCountdowns.first.judul}" dalam ${_upcomingCountdowns.first.sisaHariLabel}.' 
+        : 'Belum ada hajatan dalam waktu dekat.';
+
+    final prompt = '''
+Hari ini adalah weton $_hariJawaHariIni $_pasaranHariIni, tanggal $_hijriyahDate, dengan cuaca $cuacaStr. 
+Terdapat ${_vendors.length} vendor yang tersedia. 
+$countdownStr
+Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau kegiatan hari ini untuk $_userName menurut tradisi nusantara atau secara umum.
+''';
+
+    final response = await _chatService.sendMessage(prompt);
+    
+    if (mounted) {
+      setState(() {
+        _aiSummary = response;
+        _isLoadingAI = false;
+      });
+    }
   }
+
+  // Fungsi di atas sudah digantikan oleh versi Async
 
   void _logout() async {
     try {
@@ -194,7 +214,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final name = _userName;
-    final hijri = _hijriyah;
 
     return Scaffold(
       backgroundColor: const Color(0xfffcf9f8),
@@ -209,8 +228,12 @@ class _HomePageState extends State<HomePage> {
               _buildHeader(name),
               const SizedBox(height: 24),
 
-              // ── 2. DATE SYNC CARD ──────────────────────────
-              _buildDateCard(hijri),
+              // ── 2. BLI-AI INSIGHTS ──────────────────────────
+              _buildAIInsights(),
+              const SizedBox(height: 24),
+
+              // ── 3. DATE SYNC CARD ──────────────────────────
+              _buildDateCard(),
               const SizedBox(height: 24),
 
               // ── 3. AKSI CEPAT ──────────────────────────────
@@ -318,7 +341,66 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDateCard(Map<String, int> hijri) {
+
+
+  Widget _buildAIInsights() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFd4af37), Color(0xFFE5C04A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFd4af37).withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Bli-AI Insights',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _isLoadingAI
+              ? const SizedBox(
+                  height: 40,
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                )
+              : Text(
+                  _aiSummary,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -357,14 +439,44 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
 
-          // Masehi — besar
-          Text(
-            '$_hariJawaHariIni, ${_today.day} '
-            '${_bulanMasehi[_today.month]} ${_today.year}',
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold),
+          // Masehi — besar & Cuaca
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  '$_hariJawaHariIni, ${_today.day} '
+                  '${_bulanMasehi[_today.month]} ${_today.year}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (!_isLoadingWeather && _weather != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_weather!.temperature}°C',
+                        style: const TextStyle(
+                            color: Colors.white, 
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
 
           const SizedBox(height: 10),
@@ -380,8 +492,7 @@ class _HomePageState extends State<HomePage> {
           // Hijriyah
           _dateRow(
             'Hijriyah',
-            '${hijri['day']} ${_bulanHijriyah[hijri['month']!]} '
-            '${hijri['year']} H',
+            _hijriyahDate,
           ),
 
           const SizedBox(height: 12),

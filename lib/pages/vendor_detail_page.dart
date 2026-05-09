@@ -9,6 +9,7 @@ import 'package:projek_akhir/services/review_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:projek_akhir/pages/map_page.dart';
+import 'package:projek_akhir/pages/booking_form_page.dart';
 
 class VendorDetailPage extends StatefulWidget {
   final VendorModel vendor;
@@ -417,6 +418,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xfffcf9f8),
+      bottomNavigationBar: _buildBottomBookingBar(),
       appBar: AppBar(
         backgroundColor: const Color(0xfffcf9f8),
         elevation: 0,
@@ -520,15 +522,20 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                     icon: Icons.location_on_outlined,
                     title: 'ALAMAT',
                     content: widget.vendor.alamat,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MapPage(
-                            initialVendor: widget.vendor,
-                          ),
-                        ),
-                      );
+                    onTap: () async {
+                      final lat = widget.vendor.latitude;
+                      final lng = widget.vendor.longitude;
+                      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                      
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Tidak dapat membuka Google Maps')),
+                          );
+                        }
+                      }
                     },
                   ),
 
@@ -790,5 +797,46 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     return Supabase.instance.client.storage
         .from('vendor')
         .getPublicUrl('${widget.vendor.uuid}/main_picture.jpg');
+  }
+
+  Widget _buildBottomBookingBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 10,
+          )
+        ]
+      ),
+      child: SafeArea(
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => BookingFormPage(vendor: widget.vendor))
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFd4af37),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)
+            ),
+          ),
+          child: const Text(
+            'Sewa Vendor Sekarang',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white
+            )
+          ),
+        ),
+      ),
+    );
   }
 }

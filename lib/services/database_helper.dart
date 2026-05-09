@@ -19,8 +19,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -35,5 +36,37 @@ class DatabaseHelper {
         created_at TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE bookings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        vendor_id TEXT,
+        nama_vendor TEXT,
+        tanggal_acara TEXT,
+        jenis_adat TEXT,
+        total_harga REAL,
+        status_bayar TEXT,
+        created_at TEXT
+      )
+    ''');
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE bookings (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          vendor_id TEXT,
+          nama_vendor TEXT,
+          tanggal_acara TEXT,
+          jenis_adat TEXT,
+          total_harga REAL,
+          status_bayar TEXT,
+          created_at TEXT
+        )
+      ''');
+    }
   }
 }
