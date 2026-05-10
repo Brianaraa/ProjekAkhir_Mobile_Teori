@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';    
+import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,7 +10,7 @@ class UserService {
     final salt = DateTime.now().millisecondsSinceEpoch.toString();
     final bytes = utf8.encode(password + salt);
     final digest = sha256.convert(bytes);
-    return '${digest.toString()}:$salt'; 
+    return '${digest.toString()}:$salt';
   }
 
   bool _verifyPassword(String enteredPassword, String storedHash) {
@@ -62,17 +62,18 @@ class UserService {
       // Generate token sederhana
       final token = 'token_${DateTime.now().millisecondsSinceEpoch}';
 
-      return {
-        'token': token,
-        'user': userResponse,
-      };
+      return {'token': token, 'user': userResponse};
     } catch (e) {
       print('Login error: $e');
       return null;
     }
   }
 
-  Future<Map<String, dynamic>?> register(String nama, String email, String password) async {
+  Future<Map<String, dynamic>?> register(
+    String nama,
+    String email,
+    String password,
+  ) async {
     try {
       final isAvailable = await isEmailAvailable(email);
       if (!isAvailable) {
@@ -82,11 +83,10 @@ class UserService {
 
       final hashedPassword = _hashPassword(password);
 
-      final insertResponse = await database.insert({
-        'nama': nama,
-        'email': email,
-        'password': hashedPassword,
-      }).select().single();
+      final insertResponse = await database
+          .insert({'nama': nama, 'email': email, 'password': hashedPassword})
+          .select()
+          .single();
 
       return insertResponse;
     } catch (e) {
@@ -95,7 +95,12 @@ class UserService {
     }
   }
 
-  Future<bool> updateUser({required String userId, required String nama, required String email, String? password,}) async {
+  Future<bool> updateUser({
+    required String userId,
+    required String nama,
+    required String email,
+    String? password,
+  }) async {
     try {
       final existingUser = await Supabase.instance.client
           .from('users')
@@ -108,10 +113,7 @@ class UserService {
         return false;
       }
 
-      final data = {
-        'nama': nama,
-        'email': email,
-      };
+      final data = {'nama': nama, 'email': email};
 
       if (password != null && password.isNotEmpty) {
         data['password'] = _hashPassword(password);
@@ -130,7 +132,6 @@ class UserService {
 
       print('Profil berhasil diupdate');
       return true;
-
     } catch (e) {
       print('UpdateUser Error: $e');
       return false;
@@ -179,5 +180,8 @@ class UserService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('current_user_name');
+    await prefs.remove('user_id');
+    await prefs.remove('nama');
+    await prefs.remove('email');
   }
 }

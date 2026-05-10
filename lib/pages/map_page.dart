@@ -10,7 +10,6 @@ import 'dart:async';
 class MapPage extends StatefulWidget {
   final VendorModel? initialVendor;
   const MapPage({super.key, this.initialVendor});
-  
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -52,18 +51,19 @@ class _MapPageState extends State<MapPage> {
     }
 
     if (permission == LocationPermission.deniedForever) return;
-    
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5, // update tiap 5 meter
-      ),
-    ).listen((Position position) {
-      setState(() {
-        _currentPosition = position;
-        print('📍 posisi: ${position.latitude}, ${position.longitude}');
-      });
-    });
+
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 5, // update tiap 5 meter
+          ),
+        ).listen((Position position) {
+          setState(() {
+            _currentPosition = position;
+            print('📍 posisi: ${position.latitude}, ${position.longitude}');
+          });
+        });
   }
 
   LatLng get _initialCenter {
@@ -105,14 +105,29 @@ class _MapPageState extends State<MapPage> {
   void _onMarkerTap(VendorModel vendor) {
     setState(() => _selectedVendor = vendor);
     // geser peta ke marker yang dipilih
-    _mapController.move(
-      LatLng(vendor.latitude, vendor.longitude),
-      15.0,
-    );
+    _mapController.move(LatLng(vendor.latitude, vendor.longitude), 15.0);
   }
 
   void _closeBottomSheet() {
     setState(() => _selectedVendor = null);
+  }
+
+  String _distanceFromUserText(VendorModel vendor) {
+    final position = _currentPosition;
+    if (position == null) return 'Jarak belum tersedia';
+
+    final distanceInMeters = Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      vendor.latitude,
+      vendor.longitude,
+    );
+
+    if (distanceInMeters < 1000) {
+      return '${distanceInMeters.round()} m dari lokasimu';
+    }
+
+    return '${(distanceInMeters / 1000).toStringAsFixed(1)} km dari lokasimu';
   }
 
   @override
@@ -122,8 +137,7 @@ class _MapPageState extends State<MapPage> {
         children: [
           _isLoading
               ? const Center(
-                  child: CircularProgressIndicator(
-                      color: Color(0xFFd4af37)),
+                  child: CircularProgressIndicator(color: Color(0xFFd4af37)),
                 )
               : FlutterMap(
                   mapController: _mapController,
@@ -143,7 +157,8 @@ class _MapPageState extends State<MapPage> {
                       markers: [
                         // Vendor markers
                         ..._vendors.map((vendor) {
-                          final isSelected = _selectedVendor?.uuid == vendor.uuid;
+                          final isSelected =
+                              _selectedVendor?.uuid == vendor.uuid;
 
                           return Marker(
                             point: LatLng(vendor.latitude, vendor.longitude),
@@ -159,7 +174,10 @@ class _MapPageState extends State<MapPage> {
                                       : const Color(0xFFd4af37),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.location_on, color: Colors.white),
+                                child: const Icon(
+                                  Icons.location_on,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           );
@@ -214,11 +232,12 @@ class _MapPageState extends State<MapPage> {
               child: TextField(
                 readOnly: true,
                 onTap: () async {
-                  final VendorModel? selectedFromSearch = await Navigator.of(context).push<VendorModel>(
-                    MaterialPageRoute(
-                      builder: (_) => const _VendorSearchDelegate(),
-                    ),
-                  );
+                  final VendorModel? selectedFromSearch =
+                      await Navigator.of(context).push<VendorModel>(
+                        MaterialPageRoute(
+                          builder: (_) => const _VendorSearchDelegate(),
+                        ),
+                      );
 
                   if (selectedFromSearch != null && mounted) {
                     _onMarkerTap(selectedFromSearch);
@@ -226,13 +245,13 @@ class _MapPageState extends State<MapPage> {
                 },
                 decoration: InputDecoration(
                   hintText: 'Cari vendor di sekitarmu...',
-                  hintStyle: TextStyle(
-                      color: Colors.grey[500], fontSize: 14),
-                  prefixIcon: const Icon(Icons.search,
-                      color: Color(0xFFd4af37)),
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: Color(0xFFd4af37),
+                  ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
@@ -242,8 +261,7 @@ class _MapPageState extends State<MapPage> {
             bottom: _selectedVendor != null ? 220 : 20,
             left: 16,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -251,15 +269,16 @@ class _MapPageState extends State<MapPage> {
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 6,
-                  )
+                  ),
                 ],
               ),
               child: Text(
                 '${_vendors.length} vendor ditemukan',
                 style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF884513)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF884513),
+                ),
               ),
             ),
           ),
@@ -332,19 +351,49 @@ class _MapPageState extends State<MapPage> {
                     Text(
                       vendor.namaVendor,
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined,
-                            size: 13, color: Colors.grey),
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 13,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
                             vendor.alamat,
                             style: const TextStyle(
-                                fontSize: 12, color: Colors.grey),
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.near_me_outlined,
+                          size: 13,
+                          color: Color(0xFF884513),
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            _distanceFromUserText(vendor),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF884513),
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -371,7 +420,8 @@ class _MapPageState extends State<MapPage> {
               foregroundColor: const Color(0xFF884513),
               minimumSize: const Size(double.infinity, 48),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               elevation: 2,
             ),
             child: const Text(
@@ -395,8 +445,7 @@ class _VendorSearchDelegate extends StatefulWidget {
   const _VendorSearchDelegate();
 
   @override
-  State<_VendorSearchDelegate> createState() =>
-      _VendorSearchDelegateState();
+  State<_VendorSearchDelegate> createState() => _VendorSearchDelegateState();
 }
 
 class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
@@ -413,9 +462,13 @@ class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
     _ctrl.addListener(() {
       final q = _ctrl.text.toLowerCase();
       setState(() {
-        _filtered = _all.where((v) =>
-            v.namaVendor.toLowerCase().contains(q) ||
-            v.alamat.toLowerCase().contains(q)).toList();
+        _filtered = _all
+            .where(
+              (v) =>
+                  v.namaVendor.toLowerCase().contains(q) ||
+                  v.alamat.toLowerCase().contains(q),
+            )
+            .toList();
       });
     });
   }
@@ -465,18 +518,23 @@ class _VendorSearchDelegateState extends State<_VendorSearchDelegate> {
               child: Text(
                 v.namaVendor[0].toUpperCase(),
                 style: const TextStyle(
-                    color: Color(0xFFd4af37),
-                    fontWeight: FontWeight.bold),
+                  color: Color(0xFFd4af37),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            title: Text(v.namaVendor,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(v.alamat,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-            trailing:
-                const Icon(Icons.arrow_forward_ios, size: 14),
+            title: Text(
+              v.namaVendor,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              v.alamat,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
             onTap: () {
-              Navigator.pop(context, v); 
+              Navigator.pop(context, v);
             },
           );
         },

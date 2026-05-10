@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/models/vendor_models.dart';
-import 'package:projek_akhir/models/booking_model.dart';
-import 'package:projek_akhir/services/booking_local_service.dart';
 import 'package:projek_akhir/services/currency_service.dart';
 import 'package:projek_akhir/models/currency_model.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import 'package:projek_akhir/services/booking_service.dart';
 
 class PaymentPage extends StatefulWidget {
-  final VendorModel vendor;
+  final String vendorId;
+  final String namaVendor;
+  final String namaAcara;
+  final String layananId;
+  final String namaLayanan;
   final DateTime tanggalAcara;
-  final String jenisAdat;
   final double totalHarga;
+  final String bookingId;
 
   const PaymentPage({
     super.key,
-    required this.vendor,
+    required this.vendorId,
+    required this.namaVendor,
+    required this.layananId,
+    required this.namaLayanan,
     required this.tanggalAcara,
-    required this.jenisAdat,
     required this.totalHarga,
+    required this.bookingId,
+    required this.namaAcara,
   });
 
   @override
@@ -27,8 +31,8 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   final _currencyService = CurrencyService();
-  final _bookingService = BookingLocalService();
-  
+  final _bookingService = BookingService();
+
   List<CurrencyModel> _rates = [];
   bool _isLoadingRates = true;
 
@@ -36,7 +40,11 @@ class _PaymentPageState extends State<PaymentPage> {
   final List<Map<String, dynamic>> _methods = [
     {'name': 'QRIS', 'icon': Icons.qr_code_2, 'color': Colors.red},
     {'name': 'Mastercard', 'icon': Icons.credit_card, 'color': Colors.blue},
-    {'name': 'Transfer Bank', 'icon': Icons.account_balance, 'color': Colors.green},
+    {
+      'name': 'Transfer Bank',
+      'icon': Icons.account_balance,
+      'color': Colors.green,
+    },
   ];
 
   @override
@@ -63,7 +71,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   double _getConvertedPrice(String code) {
     if (_rates.isEmpty) return 0;
-    final model = _rates.firstWhere((r) => r.code == code, orElse: () => _rates.first);
+    final model = _rates.firstWhere(
+      (r) => r.code == code,
+      orElse: () => _rates.first,
+    );
     return widget.totalHarga * model.rate;
   }
 
@@ -72,46 +83,39 @@ class _PaymentPageState extends State<PaymentPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFFd4af37))),
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFFd4af37)),
+      ),
     );
 
-    // Simulate Network Delay
     await Future.delayed(const Duration(seconds: 2));
-
-    // Save to SQLite
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('user_id') ?? 'unknown_user';
-
-    final booking = BookingModel(
-      id: const Uuid().v4(),
-      userId: userId,
-      vendorId: widget.vendor.uuid,
-      namaVendor: widget.vendor.namaVendor,
-      tanggalAcara: widget.tanggalAcara,
-      jenisAdat: widget.jenisAdat,
-      totalHarga: widget.totalHarga,
-      statusBayar: 'LUNAS - ${_methods[_selectedMethodIndex]['name']}',
-      createdAt: DateTime.now(),
+    await _bookingService.updatePaymentStatus(
+      bookingId: widget.bookingId,
+      statusBayar: 'paid',
     );
 
-    await _bookingService.saveBooking(booking);
-
-    // Close Loading Dialog
+    // tutup dialog
     if (mounted) Navigator.pop(context);
 
-    // Show Success & Pop
+    // berhasil bayar
     if (mounted) {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: const Color(0xfffcf9f8),
+          
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+
           title: const Icon(Icons.check_circle, color: Colors.green, size: 64),
           content: const Text(
             'Pembayaran Berhasil!\nVendor berhasil disewa.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
+
           actions: [
             Center(
               child: ElevatedButton(
@@ -120,10 +124,15 @@ class _PaymentPageState extends State<PaymentPage> {
                   Navigator.pop(context); // pop payment page
                   Navigator.pop(context); // pop booking form
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF884513)),
-                child: const Text('Kembali ke Vendor', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF352010),
+                ),
+                child: const Text(
+                  'Kembali ke Vendor',
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
-            )
+            ),
           ],
         ),
       );
@@ -141,8 +150,15 @@ class _PaymentPageState extends State<PaymentPage> {
         backgroundColor: const Color(0xfffcf9f8),
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF884513)),
-        title: const Text('Pembayaran', style: TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Pembayaran',
+          style: TextStyle(
+            color: Color(0xFF352010),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -155,20 +171,57 @@ class _PaymentPageState extends State<PaymentPage> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Column(
                 children: [
-                  const Text('Total Tagihan', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                  const Text(
+                    'Total Tagihan',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+
                   const SizedBox(height: 8),
+
                   Text(
                     'Rp ${widget.totalHarga.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF884513)),
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF884513),
+                    ),
                   ),
+
+                  const SizedBox(height: 20),
+
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFfcf4e8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildInfoRow('Acara', widget.namaAcara),
+                        _buildInfoRow('Vendor', widget.namaVendor),
+                        _buildInfoRow('Layanan', widget.namaLayanan),
+                        _buildInfoRow(
+                          'Tanggal',
+                          '${widget.tanggalAcara.day}-${widget.tanggalAcara.month}-${widget.tanggalAcara.year}',
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
                   Divider(color: Colors.grey.shade200),
                   const SizedBox(height: 16),
-                  
+
                   if (_isLoadingRates)
                     const CircularProgressIndicator(strokeWidth: 2)
                   else if (_rates.isNotEmpty)
@@ -177,14 +230,36 @@ class _PaymentPageState extends State<PaymentPage> {
                       children: [
                         Column(
                           children: [
-                            const Text('Dalam USD', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text('\$${usdPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const Text(
+                              'Dalam USD',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '\$${usdPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                         Column(
                           children: [
-                            const Text('Dalam EUR', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text('€${eurPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            const Text(
+                              'Dalam EUR',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            Text(
+                              '€${eurPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -195,7 +270,10 @@ class _PaymentPageState extends State<PaymentPage> {
             const SizedBox(height: 32),
 
             // Payment Methods
-            const Text('Metode Pembayaran', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Metode Pembayaran',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             ...List.generate(_methods.length, (index) {
               final m = _methods[index];
@@ -206,17 +284,32 @@ class _PaymentPageState extends State<PaymentPage> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFd4af37).withOpacity(0.1) : Colors.white,
+                    color: isSelected
+                        ? const Color(0xFFd4af37).withOpacity(0.1)
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? const Color(0xFFd4af37) : Colors.grey.shade300),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFFd4af37)
+                          : Colors.grey.shade300,
+                    ),
                   ),
+
                   child: Row(
                     children: [
                       Icon(m['icon'], color: m['color']),
                       const SizedBox(width: 16),
-                      Text(m['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        m['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+
                       const Spacer(),
-                      if (isSelected) const Icon(Icons.check_circle, color: Color(0xFFd4af37)),
+                      if (isSelected)
+                        const Icon(
+                          Icons.check_circle,
+                          color: Color(0xFFd4af37),
+                        ),
                     ],
                   ),
                 ),
@@ -225,23 +318,54 @@ class _PaymentPageState extends State<PaymentPage> {
           ],
         ),
       ),
+
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), offset: const Offset(0, -4), blurRadius: 10)],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              offset: const Offset(0, -4),
+              blurRadius: 10,
+            ),
+          ],
         ),
+
         child: SafeArea(
           child: ElevatedButton(
             onPressed: _processPayment,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFd4af37),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text('Bayar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+
+            child: const Text(
+              'Bayar Sekarang',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: Colors.grey)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }

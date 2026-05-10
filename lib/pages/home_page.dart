@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
-import 'package:projek_akhir/models/countdown_model.dart';
 import 'package:projek_akhir/models/vendor_models.dart';
-import 'package:projek_akhir/pages/countdown_page.dart';
+import 'package:projek_akhir/pages/booking_page.dart';
 import 'package:projek_akhir/pages/login_page.dart';
-import 'package:projek_akhir/services/countdown_service.dart';
+import 'package:projek_akhir/services/booking_service.dart';
 import 'package:projek_akhir/services/user_service.dart';
 import 'package:projek_akhir/services/vendor_service.dart';
 import 'package:projek_akhir/pages/vendor_detail_page.dart';
@@ -19,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hijri/hijri_calendar.dart';
 import 'package:projek_akhir/services/weather_service.dart';
 import 'package:projek_akhir/models/weather_model.dart';
+import 'package:projek_akhir/models/booking_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,9 +29,9 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _vendorService = VendorService();
-  final _countdownService = CountdownService();
+  final _bookingService = BookingService();
 
-  List<CountdownModel> _upcomingCountdowns = []; //simpen yang sudah difilrer
+  List<BookingModel> _upcomingCountdowns = [];
   bool _isLoadingCountdown = true;
 
   List<VendorModel> _vendors = [];
@@ -50,19 +50,50 @@ class _HomePageState extends State<HomePage> {
 
   //kalender jawa
   static const List<String> _pasaran = [
-    'Kliwon', 'Legi', 'Pahing', 'Pon', 'Wage'
+    'Kliwon',
+    'Legi',
+    'Pahing',
+    'Pon',
+    'Wage',
   ];
   static const List<String> _hariJawa = [
-    'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'
+    'Minggu',
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
   ];
   static const List<String> _bulanMasehi = [
-    '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    '',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
   static const List<String> _bulanHijriyah = [
-    '', 'Muharram', 'Safar', 'Rabi\'ul Awal', 'Rabi\'ul Akhir',
-    'Jumadil Awal', 'Jumadil Akhir', 'Rajab', 'Sya\'ban',
-    'Ramadhan', 'Syawwal', 'Dzulqa\'dah', 'Dzulhijjah'
+    '',
+    'Muharram',
+    'Safar',
+    'Rabi\'ul Awal',
+    'Rabi\'ul Akhir',
+    'Jumadil Awal',
+    'Jumadil Akhir',
+    'Rajab',
+    'Sya\'ban',
+    'Ramadhan',
+    'Syawwal',
+    'Dzulqa\'dah',
+    'Dzulhijjah',
   ];
 
   String get _pasaranHariIni {
@@ -95,11 +126,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeData() async {
     await _loadUserName();
-    
+
     // Fetch data paralel
     await Future.wait([
       _fetchVendorsAsync(),
-      _fetchMyCountdownsAsync(),
+      _fetchMyBookingsAsync(),
       _fetchWeatherAsync(),
     ]);
 
@@ -117,10 +148,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _fetchMyCountdownsAsync() async {
+  Future<void> _fetchMyBookingsAsync() async {
     try {
-      final data = await _countdownService.getMyCountdowns();
-      data.sort((a, b) => a.tanggal.compareTo(b.tanggal));
+      final data = await _bookingService.getMyBookings();
+
+      data.sort((a, b) => a.tanggalAcara.compareTo(b.tanggalAcara));
+
       if (mounted) {
         setState(() {
           _upcomingCountdowns = data;
@@ -138,7 +171,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _fetchWeatherAsync() async {
-    final weather = await _weatherService.getWeather('34.71.01.1001'); // Kode DIY
+    final weather = await _weatherService.getWeather(
+      '34.71.01.1001',
+    ); // Kode DIY
     if (mounted) {
       setState(() {
         _weather = weather;
@@ -164,23 +199,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _generateAISummary() async {
-    final cuacaStr = _weather != null 
-        ? '${_weather!.description}, Suhu: ${_weather!.temperature}°C' 
+    final cuacaStr = _weather != null
+        ? '${_weather!.description}, Suhu: ${_weather!.temperature}°C'
         : 'Cerah Berawan';
-        
-    final countdownStr = _upcomingCountdowns.isNotEmpty 
-        ? 'User memiliki hajatan "${_upcomingCountdowns.first.judul}" dalam ${_upcomingCountdowns.first.sisaHariLabel}.' 
+
+    final countdownStr = _upcomingCountdowns.isNotEmpty
+        ? 'User memiliki hajatan "${_upcomingCountdowns.first.namaAcara}" dalam ${_sisaHariLabel(_upcomingCountdowns.first.tanggalAcara)}.'
         : 'Belum ada hajatan dalam waktu dekat.';
 
-    final prompt = '''
-Hari ini adalah weton $_hariJawaHariIni $_pasaranHariIni, tanggal $_hijriyahDate, dengan cuaca $cuacaStr. 
-Terdapat ${_vendors.length} vendor yang tersedia. 
-$countdownStr
-Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau kegiatan hari ini untuk $_userName menurut tradisi nusantara atau secara umum.
-''';
+    final prompt =
+        '''
+    Hari ini adalah weton $_hariJawaHariIni $_pasaranHariIni, tanggal $_hijriyahDate, dengan cuaca $cuacaStr. 
+    Terdapat ${_vendors.length} vendor yang tersedia. 
+    $countdownStr
+    Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau kegiatan hari ini untuk $_userName menurut tradisi nusantara atau secara umum.
+    ''';
 
     final response = await _chatService.sendMessage(prompt);
-    
+
     if (mounted) {
       setState(() {
         _aiSummary = response;
@@ -189,16 +225,20 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
     }
   }
 
-  // Fungsi di atas sudah digantikan oleh versi Async
+  String _sisaHariLabel(DateTime date) {
+    final days = date.difference(DateTime.now()).inDays;
+
+    return 'H-$days';
+  }
 
   void _logout() async {
     try {
       await AuthStorage.deleteSession();
-      await UserService.logout();        // ← TAMBAHKAN INI
+      await UserService.logout();
 
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginPage()),  // LoginPage, bukan AuthGate
+          MaterialPageRoute(builder: (_) => const LoginPage()),
           (route) => false,
         );
       }
@@ -223,75 +263,80 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
-              // ── 1. HEADER ──────────────────────────────────
               _buildHeader(name),
               const SizedBox(height: 24),
 
-              // ── 2. BLI-AI INSIGHTS ──────────────────────────
-              _buildAIInsights(),
+              // _buildAIInsights(),
               const SizedBox(height: 24),
 
-              // ── 3. DATE SYNC CARD ──────────────────────────
               _buildDateCard(),
               const SizedBox(height: 24),
 
-              // ── 3. AKSI CEPAT ──────────────────────────────
-              const Text('Aksi Cepat',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Aksi Cepat',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 14),
               _buildQuickActions(),
               const SizedBox(height: 24),
 
-              // ── 5. Hajatan mendatang ────────────────────────────
+              // list booking
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Hajatan Mendatang',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   GestureDetector(
-                    onTap: () => _go(const CountdownPage()), // atau halaman daftar hajatan
+                    onTap: () => _go(const BookingPage()),
                     child: const Text(
                       'Lihat Semua',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Color(0xFFd4af37),
+                        color: const Color(0xFF352010),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              _buildUpcomingHajatan(),
+
               const SizedBox(height: 24),
 
-              // ── 4. VENDOR ──────────────────────────────────
+              _buildUpcomingHajatan(),
+
+              const SizedBox(height: 24),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Vendor Tersedia',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Vendor Tersedia',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+
                   GestureDetector(
                     onTap: () => _go(const SearchPage()),
-                    child: const Text('Lihat semua →',
-                        style: TextStyle(
-                            fontSize: 12, color: Color(0xFFd4af37))),
+                    child: const Text(
+                      'Lihat semua',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color.fromARGB(255, 84, 52, 27),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 14),
+
               _buildVendorList(),
+              
               const SizedBox(height: 24),
 
-            // ── 5. BANNER FITUR ────────────────────────────
+              // fitur
               _buildFeatureBanner(),
               const SizedBox(height: 16),
             ],
@@ -301,10 +346,6 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
     );
   }
 
-  // ──────────────────────────────────────────────────────────
-  // WIDGETS
-  // ──────────────────────────────────────────────────────────
-
   Widget _buildHeader(String name) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -312,11 +353,14 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('$_greeting,',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            Text(name,
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              '$_greeting,',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+            Text(
+              name,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         Row(
@@ -328,11 +372,15 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.08),
+                  color: const Color(0xFF884513).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.logout,
-                    color: Colors.red, size: 20),
+
+                child: const Icon(
+                  Icons.logout,
+                  color: Color(0xFF884513),
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -340,8 +388,6 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
       ],
     );
   }
-
-
 
   Widget _buildAIInsights() {
     return Container(
@@ -405,15 +451,11 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2C1810), Color(0xFF5C3317)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF352010),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2C1810).withOpacity(0.3),
+            color: const Color(0xFF884513).withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -425,15 +467,15 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
           // Label
           Row(
             children: const [
-              Icon(Icons.calendar_today,
-                  color: Color(0xFFd4af37), size: 14),
+              Icon(Icons.calendar_today, color: Color(0xFFd4af37), size: 14),
               SizedBox(width: 6),
               Text(
                 'Sinkronisasi Kalender Hari Ini',
                 style: TextStyle(
-                    color: Color(0xFFd4af37),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600),
+                  color: Color(0xFFd4af37),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -449,18 +491,24 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                   '$_hariJawaHariIni, ${_today.day} '
                   '${_bulanMasehi[_today.month]} ${_today.year}',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+
               if (!_isLoadingWeather && _weather != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
+
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -469,9 +517,10 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                       Text(
                         '${_weather!.temperature}°C',
                         style: const TextStyle(
-                            color: Colors.white, 
-                            fontSize: 12, 
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -484,35 +533,32 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
           const SizedBox(height: 10),
 
           // Jawa
-          _dateRow('Jawa',
-              '$_hariJawaHariIni $_pasaranHariIni'),
+          _dateRow('Jawa', '$_hariJawaHariIni $_pasaranHariIni'),
 
           const SizedBox(height: 6),
 
           // Hijriyah
-          _dateRow(
-            'Hijriyah',
-            _hijriyahDate,
-          ),
+          _dateRow('Hijriyah', _hijriyahDate),
 
           const SizedBox(height: 12),
 
           // Badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFd4af37).withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: const Color(0xFFd4af37).withOpacity(0.4)),
+                color: const Color(0xFFd4af37).withOpacity(0.4),
+              ),
             ),
             child: Text(
-              '✨ $_hariJawaHariIni $_pasaranHariIni',
+              '$_hariJawaHariIni $_pasaranHariIni',
               style: const TextStyle(
-                  color: Color(0xFFd4af37),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500),
+                color: Color(0xFFd4af37),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -525,17 +571,25 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
       children: [
         SizedBox(
           width: 60,
-          child: Text(label,
-              style: TextStyle(
-                  color: Colors.white.withOpacity(0.5), fontSize: 12)),
-        ),
-        Text(' : ',
+          child: Text(
+            label,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.3), fontSize: 12)),
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 12,
+            ),
+          ),
+        ),
+
+        Text(
+          ' : ',
+          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+        ),
+
         Expanded(
-          child: Text(value,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 13)),
+          child: Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+          ),
         ),
       ],
     );
@@ -557,20 +611,19 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.grey.shade200),
         ),
+
         child: Column(
           children: const [
             Icon(Icons.event_busy, size: 48, color: Colors.grey),
+
             SizedBox(height: 12),
+
             Text(
               'Belum ada hajatan mendatang',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
+
             SizedBox(height: 4),
-            Text(
-              'Hajatan yang sudah lewat tidak ditampilkan di sini',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       );
@@ -579,21 +632,15 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
     final hajatan = _upcomingCountdowns.first;
 
     return GestureDetector(
-      onTap: () => _go(const CountdownPage()),
+      onTap: () => _go(const BookingPage()),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
+
         child: Row(
           children: [
             Expanded(
@@ -601,15 +648,17 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    hajatan.judul,
+                    hajatan.namaAcara,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
-                    '${hajatan.tanggal.day} ${_bulanMasehi[hajatan.tanggal.month]} ${hajatan.tanggal.year}',
+                    '${hajatan.tanggalAcara.day} ${_bulanMasehi[hajatan.tanggalAcara.month]} ${hajatan.tanggalAcara.year}',
                     style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
@@ -622,6 +671,7 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                 color: const Color(0xFFd4af37).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
+
               child: Column(
                 children: [
                   const Text(
@@ -632,8 +682,9 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                       color: Color(0xFFd4af37),
                     ),
                   ),
+
                   Text(
-                    hajatan.sisaHariLabel,
+                    _sisaHariLabel(hajatan.tanggalAcara),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -685,13 +736,11 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
       crossAxisSpacing: 6,
       children: actions.map((a) {
         return GestureDetector(
-          onTap: () => 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => a['page'] as Widget,
-              ),
-            ),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => a['page'] as Widget),
+          ),
+
           child: Column(
             children: [
               Container(
@@ -701,17 +750,23 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                   color: const Color(0xFFd4af37).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: const Color(0xFFd4af37).withOpacity(0.2)),
+                    color: const Color(0xFFd4af37).withOpacity(0.2),
+                  ),
                 ),
-                child: Icon(a['icon'] as IconData,
-                    color: const Color(0xFFd4af37), size: 22),
+
+                child: Icon(
+                  a['icon'] as IconData,
+                  color: const Color(0xFFd4af37),
+                  size: 22,
+                ),
               ),
+
               const SizedBox(height: 5),
+
               Text(
                 a['label'] as String,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 9, color: Colors.grey),
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
                 maxLines: 2,
               ),
             ],
@@ -735,9 +790,9 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
+
         child: const Center(
-          child: Text('Belum ada vendor',
-              style: TextStyle(color: Colors.grey)),
+          child: Text('Belum ada vendor', style: TextStyle(color: Colors.grey)),
         ),
       );
     }
@@ -766,6 +821,7 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                   ),
                 ],
               ),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -775,40 +831,50 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFd4af37)
-                              .withOpacity(0.15),
+                          color: const Color(0xFF884513).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
+
                         child: Center(
                           child: Text(
                             v.namaVendor[0].toUpperCase(),
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFd4af37),
+                              color: Color(0xFF352010),
                             ),
                           ),
                         ),
                       ),
+
                       const Spacer(),
-                      const Icon(Icons.arrow_forward_ios,
-                          size: 11, color: Colors.grey),
+
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 11,
+                        color: Colors.grey,
+                      ),
                     ],
                   ),
+
                   const SizedBox(height: 10),
+
                   Text(
                     v.namaVendor,
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+
                   const SizedBox(height: 3),
+
                   Text(
                     v.alamat,
-                    style: const TextStyle(
-                        fontSize: 11, color: Colors.grey),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -830,8 +896,7 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
         decoration: BoxDecoration(
           color: const Color(0xFFd4af37).withOpacity(0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: const Color(0xFFd4af37).withOpacity(0.25)),
+          border: Border.all(color: const Color(0xFFd4af37).withOpacity(0.25)),
         ),
         child: Row(
           children: [
@@ -842,29 +907,34 @@ Berikan 2 kalimat ringkas dan ramah berisi saran/insight persiapan hajatan atau 
                 color: const Color(0xFFd4af37),
                 borderRadius: BorderRadius.circular(13),
               ),
-              child: const Icon(Icons.auto_awesome,
-                  color: Colors.white, size: 22),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Colors.white,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 14),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Bli-AI, Game & Sensor',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold)),
+                  Text(
+                    'Bli-AI, Game & Sensor',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
                   SizedBox(height: 2),
                   Text(
                     'Kuis adat, acak kursi, balance game & lebih',
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                size: 13, color: Color(0xFFd4af37)),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 13,
+              color: Color(0xFFd4af37),
+            ),
           ],
         ),
       ),

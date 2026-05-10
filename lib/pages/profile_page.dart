@@ -20,29 +20,11 @@ class _ProfilePageState extends State<ProfilePage> {
   String _userEmail = '';
   String? _profileImageUrl;
   bool _isUploading = false;
-  bool _isBiometricEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _loadBiometricSettings();
-  }
-
-  Future<void> _loadBiometricSettings() async {
-    final val = await AuthStorage.isBiometricEnabled();
-    if (mounted) {
-      setState(() {
-        _isBiometricEnabled = val;
-      });
-    }
-  }
-
-  Future<void> _toggleBiometric(bool val) async {
-    await AuthStorage.setBiometric(val);
-    setState(() {
-      _isBiometricEnabled = val;
-    });
   }
 
   Future<void> _loadUserData() async {
@@ -59,21 +41,47 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _loadProfileImage(String uuid) {
+  Future<void> _loadProfileImage(
+    String uuid,
+  ) async {
     try {
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final files =
+          await Supabase.instance.client.storage
+              .from('profile')
+              .list();
+
+      final exists = files.any(
+        (file) => file.name == '$uuid.jpg',
+      );
+
+      if (!exists) {
+        setState(() {
+          _profileImageUrl = null;
+        });
+
+        return;
+      }
+
+      final timestamp =
+          DateTime.now()
+              .millisecondsSinceEpoch;
+
       final url = Supabase.instance.client.storage
           .from('profile')
           .getPublicUrl('$uuid.jpg');
 
-      final imageUrlWithCacheBuster = '$url?t=$timestamp';
-
       setState(() {
-        _profileImageUrl = imageUrlWithCacheBuster;
+        _profileImageUrl =
+            '$url?t=$timestamp';
       });
     } catch (e) {
-      print('Error loading profile image: $e');
-      setState(() => _profileImageUrl = null);
+      print(
+        'Error loading profile image: $e',
+      );
+
+      setState(() {
+        _profileImageUrl = null;
+      });
     }
   }
 
@@ -133,10 +141,7 @@ class _ProfilePageState extends State<ProfilePage> {
           .uploadBinary(
             fileName,
             bytes,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: true,
-            ),
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
           );
 
       _loadProfileImage(uuid);
@@ -244,16 +249,21 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: OutlinedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 14),
                     side: BorderSide(color: Color(0xFF884513)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(
                     'Batal',
-                    style: TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFF884513),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
               SizedBox(width: 12),
-  
+
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
@@ -262,7 +272,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     if (userId == null || userId.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('User ID tidak ditemukan'), backgroundColor: Colors.red),
+                        const SnackBar(
+                          content: Text('User ID tidak ditemukan'),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                       return;
                     }
@@ -278,7 +291,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     if (success) {
                       await prefs.setString('nama', nameController.text.trim());
-                      await prefs.setString('email', emailController.text.trim());
+                      await prefs.setString(
+                        'email',
+                        emailController.text.trim(),
+                      );
 
                       setState(() {
                         _userName = nameController.text.trim();
@@ -287,11 +303,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Profil berhasil diperbarui'), backgroundColor: Colors.green),
+                        const SnackBar(
+                          content: Text('Profil berhasil diperbarui'),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Gagal update profil'), backgroundColor: Colors.red),
+                        const SnackBar(
+                          content: Text('Gagal update profil'),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                     }
                   },
@@ -299,11 +321,16 @@ class _ProfilePageState extends State<ProfilePage> {
                     backgroundColor: const Color(0xFFd4af37),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text(
                     'Simpan',
-                    style: TextStyle(color: Color(0xFF884513), fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Color(0xFF884513),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -315,7 +342,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // Helper Widget untuk TextField Edit Profil agar tidak duplikasi kode
-  Widget _buildEditTextField({ required TextEditingController controller, required String label, required IconData icon, bool isPassword = false, 
+  Widget _buildEditTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
@@ -340,7 +371,10 @@ class _ProfilePageState extends State<ProfilePage> {
           borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
 
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }
@@ -348,18 +382,14 @@ class _ProfilePageState extends State<ProfilePage> {
   void _goToKesanPesanPage() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const KesanPesanPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const KesanPesanPage()),
     );
   }
 
   void _goToBookmarkPage() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => const BookmarkPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const BookmarkPage()),
     );
   }
 
@@ -382,17 +412,19 @@ class _ProfilePageState extends State<ProfilePage> {
                   CircleAvatar(
                     radius: 55,
                     backgroundColor: const Color(0xFFd4af37),
-                    backgroundImage: _profileImageUrl != null
-                        ? NetworkImage(_profileImageUrl!)
-                        : null,
+
+                    backgroundImage:
+                        _profileImageUrl != null
+                            ? NetworkImage(
+                                _profileImageUrl!,
+                              )
+                            : null,
+
                     child: _profileImageUrl == null
-                        ? Text(
-                            _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                        ? const Icon(
+                            Icons.person,
+                            size: 58,
+                            color: Colors.white,
                           )
                         : null,
                   ),
@@ -407,6 +439,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
                       ),
+
                       child: _isUploading
                           ? const SizedBox(
                               width: 22,
@@ -430,7 +463,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
               Text(
                 _userName,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
                 _userEmail,
@@ -469,38 +505,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 onTap: _goToBookmarkPage,
               ),
 
-              const SizedBox(height: 12),
-
-              // Switch Biometrik
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.08),
-                      spreadRadius: 2,
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: SwitchListTile(
-                  title: const Text('Aktifkan Login Biometrik', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  secondary: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFd4af37).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.fingerprint, color: Color(0xFFd4af37)),
-                  ),
-                  value: _isBiometricEnabled,
-                  activeColor: const Color(0xFFd4af37),
-                  onChanged: _toggleBiometric,
-                ),
-              ),
-
               const SizedBox(height: 40),
 
               ElevatedButton.icon(
@@ -508,11 +512,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 icon: const Icon(Icons.logout),
                 label: const Text("Keluar"),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red[50],
-                  foregroundColor: Colors.red,
+                  backgroundColor: const Color(0xFF884513).withOpacity(0.1),
+                  foregroundColor: const Color(0xFF884513),
                   minimumSize: const Size(double.infinity, 52),
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],
@@ -522,7 +528,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuCard({required IconData icon, required Color iconColor, required Color iconBgColor, required String title, required VoidCallback onTap,}) {
+  Widget _buildMenuCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -530,13 +542,6 @@ class _ProfilePageState extends State<ProfilePage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
 
         child: Padding(
@@ -569,5 +574,4 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
 }

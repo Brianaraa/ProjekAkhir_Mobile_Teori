@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/auth/auth_gate.dart';
 import 'package:projek_akhir/auth/auth_storage.dart';
+import 'package:projek_akhir/auth/biometric.dart';
+import 'package:projek_akhir/pages/main_navigation.dart';
 import 'package:projek_akhir/pages/sign_up.dart';
 import 'package:projek_akhir/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,17 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LoginPage extends StatefulWidget {
   final bool isSessionExpired;
 
-  const LoginPage({
-    super.key,
-    this.isSessionExpired = false,
-  });
+  const LoginPage({super.key, this.isSessionExpired = false});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -28,7 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   void login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
-
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() => _isLoading = true); 
+    setState(() => _isLoading = true);
     try {
       final userService = UserService();
       final result = await userService.login(email, password);
@@ -64,15 +60,17 @@ class _LoginPageState extends State<LoginPage> {
 
       await AuthStorage.saveSession(
         token: token,
-        expiredAt: DateTime.now().add(const Duration(minutes: 10)), //ganti jam disini
+        expiredAt: DateTime.now().add(
+          const Duration(minutes: 3),
+        ), //ganti jam disini
       );
 
+      final biometricVerified = await _showBiometricDialog();
 
-
-      if (mounted) {
+      if (biometricVerified && mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const AuthGate()),
+          MaterialPageRoute(builder: (_) => const MainNavigation()),
           (route) => false,
         );
       }
@@ -101,6 +99,158 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<bool> _showBiometricDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        bool isVerifying = false;
+        bool hasFailed = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+
+              backgroundColor: const Color(0xfffcf9f8),
+
+              title: const Text(
+                'Verifikasi Sidik Jari',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFd4af37),
+                      shape: BoxShape.circle,
+                    ),
+
+                    child: const Icon(
+                      Icons.fingerprint,
+                      color: Colors.white,
+                      size: 52,
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+                  Text(
+                    hasFailed
+                        ? 'Sidik jari tidak cocok. Silakan coba lagi.'
+                        : 'Tekan tombol di bawah untuk scan sidik jari.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[700], height: 1.4),
+                  ),
+                ],
+              ),
+
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: isVerifying
+                            ? null
+                            : () async {
+                                await AuthStorage.deleteSession();
+                                if (dialogContext.mounted) {
+                                  Navigator.pop(dialogContext, false);
+                                }
+                              },
+
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFF884513)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+
+                        child: const Text(
+                          'Batal',
+                          style: TextStyle(color: Color(0xFF884513)),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: isVerifying
+                            ? null
+                            : () async {
+                                setDialogState(() {
+                                  isVerifying = true;
+                                  hasFailed = false;
+                                });
+
+                                final success = await BiometricService.authenticate();
+
+                                if (!dialogContext.mounted) return;
+
+                                if (success) {
+                                  Navigator.pop(dialogContext, true);
+                                  return;
+                                }
+
+                                setDialogState(() {
+                                  isVerifying = false;
+                                  hasFailed = true;
+                                });
+                              },
+                              
+                        icon: isVerifying
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Color(0xFF884513),
+                                ),
+                              )
+                            : const Icon(Icons.fingerprint),
+
+                        label: Text(
+                          isVerifying ? 'Scan...' : 'Verifikasi',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFd4af37),
+                          foregroundColor: const Color(0xFF884513),
+                          disabledBackgroundColor: const Color(0xFFd4af37),
+                          disabledForegroundColor: const Color(0xFF884513),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return result == true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -108,9 +258,7 @@ class _LoginPageState extends State<LoginPage> {
     if (widget.isSessionExpired) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sesi berakhir, harap login kembali'),
-          ),
+          const SnackBar(content: Text('Sesi berakhir, harap login kembali')),
         );
       });
     }
@@ -124,7 +272,9 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           child: Container(
             constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top,
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
             child: Column(
@@ -163,7 +313,11 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Text(
                         "Alamat Email",
-                        style: TextStyle(fontSize: 13, color: Color(0xff000000), fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xff000000),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
 
                       const SizedBox(height: 8),
@@ -173,7 +327,11 @@ class _LoginPageState extends State<LoginPage> {
 
                       const Text(
                         "Kata Sandi",
-                        style: TextStyle(fontSize: 13, color: Color(0xff000000), fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xff000000),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       _passwordField(),
@@ -200,7 +358,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),                   
+                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -214,7 +372,7 @@ class _LoginPageState extends State<LoginPage> {
                       "Belum memiliki akun?",
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                        
+
                     const SizedBox(width: 6),
                     TextButton(
                       onPressed: () {
@@ -225,7 +383,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         );
                       },
-  
+
                       child: const Text(
                         "Daftar",
                         style: TextStyle(
@@ -255,9 +413,7 @@ class _LoginPageState extends State<LoginPage> {
 
         prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFd4af37)),
 
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -269,7 +425,10 @@ class _LoginPageState extends State<LoginPage> {
           borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
 
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
     );
   }
@@ -286,9 +445,7 @@ class _LoginPageState extends State<LoginPage> {
 
         prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFFd4af37)),
 
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
 
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -300,7 +457,10 @@ class _LoginPageState extends State<LoginPage> {
           borderSide: const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
 
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
 
         suffixIcon: IconButton(
           icon: Icon(

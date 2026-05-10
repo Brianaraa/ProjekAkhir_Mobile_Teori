@@ -102,7 +102,9 @@ class _SearchPageState extends State<SearchPage> {
                     style: TextStyle(
                         fontSize: 32, fontWeight: FontWeight.bold),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     '${_filtered.length} vendor ditemukan',
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
@@ -158,17 +160,21 @@ class _SearchPageState extends State<SearchPage> {
                 child: const Icon(Icons.close, color: Colors.grey),
               )
             : null,
+
         filled: true,
         fillColor: const Color(0xfff6f3f2),
+
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
+
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
               const BorderSide(color: Color(0xFFd4af37), width: 1.5),
         ),
+
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
@@ -200,15 +206,17 @@ class _SearchPageState extends State<SearchPage> {
             )
           ],
         ),
+
         child: Row(
           children: [
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFFd4af37).withOpacity(0.15),
+                color: const Color(0xFF884513).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
+
               child: Center(
                 child: Text(
                   vendor.namaVendor.isNotEmpty
@@ -217,7 +225,7 @@ class _SearchPageState extends State<SearchPage> {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFd4af37),
+                    color: Color(0xFF352010),
                   ),
                 ),
               ),

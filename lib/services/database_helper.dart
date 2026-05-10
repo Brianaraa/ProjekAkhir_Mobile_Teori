@@ -44,7 +44,6 @@ class DatabaseHelper {
         vendor_id TEXT,
         nama_vendor TEXT,
         tanggal_acara TEXT,
-        jenis_adat TEXT,
         total_harga REAL,
         status_bayar TEXT,
         created_at TEXT
@@ -61,7 +60,6 @@ class DatabaseHelper {
           vendor_id TEXT,
           nama_vendor TEXT,
           tanggal_acara TEXT,
-          jenis_adat TEXT,
           total_harga REAL,
           status_bayar TEXT,
           created_at TEXT

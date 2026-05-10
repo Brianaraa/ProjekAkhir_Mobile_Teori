@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LayananModel {
-  final String id;
+  final String uuid;
   final String idVendor;
   final String namaLayanan;
   final String? deskripsi;
@@ -9,7 +9,7 @@ class LayananModel {
   final String? foto;
 
   LayananModel({
-    required this.id,
+    required this.uuid,
     required this.idVendor,
     required this.namaLayanan,
     this.deskripsi,
@@ -19,7 +19,7 @@ class LayananModel {
 
   factory LayananModel.fromJson(Map<String, dynamic> json) {
     return LayananModel(
-      id: json['id'] ?? '',
+      uuid: json['uuid'] ?? '',
       idVendor: json['id_vendor'] ?? '',
       namaLayanan: json['nama_layanan'] ?? '',
       deskripsi: json['deskripsi'],
@@ -30,7 +30,7 @@ class LayananModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'uuid': uuid,
       'id_vendor': idVendor,
       'nama_layanan': namaLayanan,
       'deskripsi': deskripsi,

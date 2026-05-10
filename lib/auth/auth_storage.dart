@@ -5,7 +5,6 @@ class AuthStorage {
 
   static const _tokenKey = 'auth_token';
   static const _expiredAtKey = 'auth_expired_at';
-  static const _biometricKey = 'biometric_enabled';
 
   //simpen session
   static Future<void> saveSession({
@@ -38,14 +37,5 @@ class AuthStorage {
   static Future<void> deleteSession() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _expiredAtKey);
-  }
-  
-  static Future<void> setBiometric(bool value) async {
-    await _storage.write(key: _biometricKey, value: value.toString());
-  }
-
-  static Future<bool> isBiometricEnabled() async {
-    final value = await _storage.read(key: _biometricKey);
-    return value == 'true';
   }
 }

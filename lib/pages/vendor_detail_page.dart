@@ -14,10 +14,7 @@ import 'package:projek_akhir/pages/booking_form_page.dart';
 class VendorDetailPage extends StatefulWidget {
   final VendorModel vendor;
 
-  const VendorDetailPage({
-    super.key,
-    required this.vendor,
-  });
+  const VendorDetailPage({super.key, required this.vendor});
 
   @override
   State<VendorDetailPage> createState() => _VendorDetailPageState();
@@ -40,6 +37,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
   bool isLoadingReviews = true;
 
   ReviewModel? myReview;
+  String? _currentUserId;
 
   double? get _minHarga {
     if (layananList.isEmpty) return null;
@@ -59,10 +57,29 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     final harga = _minHarga;
     if (harga == null) return 'Harga belum ada';
 
-    return 'Rp ${harga.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    )}';
+    return _formatHargaSingkat(harga);
+  }
+
+  String _formatHargaSingkat(double? harga) {
+    if (harga == null || harga <= 0) return 'Harga belum ada';
+
+    if (harga >= 1000000) {
+      final juta = harga / 1000000;
+      final text = juta == juta.roundToDouble()
+          ? juta.toStringAsFixed(0)
+          : juta.toStringAsFixed(1).replaceAll('.', ',');
+      return '${text}jt';
+    }
+
+    if (harga >= 1000) {
+      final ribu = harga / 1000;
+      final text = ribu == ribu.roundToDouble()
+          ? ribu.toStringAsFixed(0)
+          : ribu.toStringAsFixed(1).replaceAll('.', ',');
+      return '${text}rb';
+    }
+
+    return harga.toStringAsFixed(0);
   }
 
   @override
@@ -81,6 +98,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     try {
       final userId = await _reviewService.getCurrentUserId();
       reviews = await _reviewService.getReviewsByVendor(widget.vendor.uuid);
+      _currentUserId = userId;
 
       final summary = await _reviewService.getVendorSummary(widget.vendor.uuid);
       if (summary != null) {
@@ -88,24 +106,39 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
         ratingCount = summary['rating_count'] ?? 0;
       }
 
+      myReview = null;
       if (userId != null) {
-        myReview = reviews.firstWhere((r) => r.userId == userId);
+        for (final review in reviews) {
+          if (review.userId == userId) {
+            myReview = review;
+            break;
+          }
+        }
+
+        reviews.sort((a, b) {
+          if (a.userId == userId) return -1;
+          if (b.userId == userId) return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
       }
 
-      layananList = await _layananService.getLayananByVendor(widget.vendor.uuid);
+      layananList = await _layananService.getLayananByVendor(
+        widget.vendor.uuid,
+      );
 
       try {
-    final bookmarkRepo = BookmarkRepository();
+        final bookmarkRepo = BookmarkRepository();
 
-    final allBookmarks = await bookmarkRepo.getAll();
-    
-    setState(() {
-      isBookmarked = allBookmarks.any((b) => b.vendorId == widget.vendor.uuid);
-    });
-  } catch (e) {
-    print('Error loading bookmark: $e');
-  }
+        final allBookmarks = await bookmarkRepo.getAll();
 
+        setState(() {
+          isBookmarked = allBookmarks.any(
+            (b) => b.vendorId == widget.vendor.uuid,
+          );
+        });
+      } catch (e) {
+        print('Error loading bookmark: $e');
+      }
     } catch (e) {
       print('Error loading data: $e');
     } finally {
@@ -121,7 +154,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
   Future<void> _loadBookmark() async {
     try {
       final repo = BookmarkRepository();
-      final all = await repo.getAll(); 
+      final all = await repo.getAll();
 
       if (mounted) {
         setState(() {
@@ -159,8 +192,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
   }
 
   void _showReviewDialog() {
-    final commentController =
-        TextEditingController(text: myReview?.komentar ?? '');
+    final commentController = TextEditingController(
+      text: myReview?.komentar ?? '',
+    );
     double rating = myReview?.rating ?? 5;
 
     showDialog(
@@ -202,7 +236,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                           });
                         },
                         icon: Icon(
-                          i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                          i < rating
+                              ? Icons.star_rounded
+                              : Icons.star_outline_rounded,
                           color: Colors.amber,
                           size: 32,
                         ),
@@ -215,8 +251,12 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                     controller: commentController,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: 'Bagikan pengalaman Anda menggunakan jasa vendor ini...',
-                      hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
+                      hintText:
+                          'Bagikan pengalaman Anda menggunakan jasa vendor ini...',
+                      hintStyle: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
                       filled: true,
                       fillColor: Colors.white,
 
@@ -266,7 +306,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                             komentar: commentController.text,
                           );
                           if (context.mounted) Navigator.pop(context);
-                          await _loadData(); 
+                          await _loadData();
                         },
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -295,84 +335,178 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     );
   }
 
-  Widget _buildLayananCard(LayananModel layanan) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          )
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: layanan.foto != null && layanan.foto!.isNotEmpty
-                ? Image.network(
-                    layanan.getFotoUrl(widget.vendor.uuid),
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholderImage(),
-                  )
-                : _placeholderImage(),
+  void _showLayananDetail(LayananModel layanan) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-
-          const SizedBox(width: 16),
-
-          Expanded(
+          backgroundColor: const Color(0xfffcf9f8),
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          content: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: layanan.foto != null && layanan.foto!.isNotEmpty
+                      ? Image.network(
+                          layanan.getFotoUrl(widget.vendor.uuid),
+                          width: double.infinity,
+                          height: 180,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _placeholderImage(
+                            width: double.infinity,
+                            height: 180,
+                          ),
+                        )
+                      : _placeholderImage(width: double.infinity, height: 180),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   layanan.namaLayanan,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                if (layanan.deskripsi != null && layanan.deskripsi!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      layanan.deskripsi!,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  layanan.hargaFormatted,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
                     color: Color(0xFF884513),
                   ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Mulai dari ${_formatHargaSingkat(layanan.harga)}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFd4af37),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Deskripsi',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF884513),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  layanan.deskripsi != null && layanan.deskripsi!.isNotEmpty
+                      ? layanan.deskripsi!
+                      : 'Belum ada deskripsi untuk layanan ini.',
+                  style: const TextStyle(fontSize: 14, height: 1.5),
                 ),
               ],
             ),
           ),
-        ],
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFd4af37),
+                  foregroundColor: const Color(0xFF884513),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Tutup',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLayananCard(LayananModel layanan) {
+    return GestureDetector(
+      onTap: () => _showLayananDetail(layanan),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: layanan.foto != null && layanan.foto!.isNotEmpty
+                  ? Image.network(
+                      layanan.getFotoUrl(widget.vendor.uuid),
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholderImage(),
+                    )
+                  : _placeholderImage(),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    layanan.namaLayanan,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (layanan.deskripsi != null &&
+                      layanan.deskripsi!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        layanan.deskripsi!,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Mulai dari ${_formatHargaSingkat(layanan.harga)}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF884513),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey, size: 22),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _placeholderImage() {
+  Widget _placeholderImage({double width = 80, double height = 80}) {
     return Container(
-      width: 80,
-      height: 80,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: Colors.grey[200],
         borderRadius: BorderRadius.circular(10),
@@ -392,9 +526,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
           isBookmarked = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bookmark dihapus')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Bookmark dihapus')));
       } else {
         await repo.add(widget.vendor.uuid);
 
@@ -402,9 +536,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
           isBookmarked = true;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil dibookmark')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Berhasil dibookmark')));
       }
     } catch (e) {
       print('Toggle error: $e');
@@ -426,10 +560,11 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
+
         title: const Text(
           'Hagati',
           style: TextStyle(
-            color: Color(0xFF884513),
+            color: Color(0xFF352010),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -439,7 +574,6 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             Stack(
               children: [
                 Image.network(
@@ -465,7 +599,6 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -479,7 +612,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                         ),
                       ),
                       Text(
-                          _minHargaFormatted,
+                        _minHargaFormatted,
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -498,7 +631,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                       Text(
                         ratingAvgDisplay.toStringAsFixed(1),
                         style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w600),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -522,20 +657,13 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                     icon: Icons.location_on_outlined,
                     title: 'ALAMAT',
                     content: widget.vendor.alamat,
-                    onTap: () async {
-                      final lat = widget.vendor.latitude;
-                      final lng = widget.vendor.longitude;
-                      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-                      
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      } else {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tidak dapat membuka Google Maps')),
-                          );
-                        }
-                      }
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MapPage(initialVendor: widget.vendor),
+                        ),
+                      );
                     },
                   ),
 
@@ -569,7 +697,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                     )
                   else
                     Column(
-                      children: layananList.map((layanan) => _buildLayananCard(layanan)).toList(),
+                      children: layananList
+                          .map((layanan) => _buildLayananCard(layanan))
+                          .toList(),
                     ),
 
                   const SizedBox(height: 40),
@@ -581,32 +711,38 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
 
                   const SizedBox(height: 24),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _showReviewDialog,
-                      label: Text(
-                        myReview == null ? 'Beri Ulasan Sekarang' : 'Perbarui Ulasan Anda',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF884513),
+                  if (myReview == null) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: _showReviewDialog,
+                        label: const Text(
+                          'Beri Ulasan Sekarang',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF884513),
+                          ),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFd4af37).withOpacity(0.2),
-                        foregroundColor: const Color(0xFF884513),
-                        elevation: 0, 
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Color(0xFFd4af37), width: 1),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFFd4af37,
+                          ).withOpacity(0.2),
+                          foregroundColor: const Color(0xFF884513),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(
+                              color: Color(0xFFd4af37),
+                              width: 1,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                  ],
 
                   if (isLoadingReviews)
                     const Center(child: CircularProgressIndicator())
@@ -620,34 +756,16 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                   else
                     Column(
                       children: reviews
-                          .map((review) => _buildReviewCard(review))
+                          .map(
+                            (review) => _buildReviewCard(
+                              review,
+                              isMine: review.userId == _currentUserId,
+                            ),
+                          )
                           .toList(),
                     ),
 
-                  SizedBox(height: 32),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: _toggleBookmark,
-                      icon: Icon(
-                        isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                      ),
-                      label: Text(
-                        isBookmarked
-                            ? 'Hapus Bookmark'
-                            : 'Bookmark Hajatan',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFd4af37),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -657,12 +775,14 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     );
   }
 
-  Widget _buildReviewCard(ReviewModel review) {
+  Widget _buildReviewCard(ReviewModel review, {required bool isMine}) {
     String formattedDate = '';
 
     try {
-      formattedDate =
-          DateFormat('dd MMMM yyyy', 'id_ID').format(review.createdAt);
+      formattedDate = DateFormat(
+        'dd MMMM yyyy',
+        'id_ID',
+      ).format(review.createdAt);
     } catch (_) {
       formattedDate = DateFormat('dd MMM yyyy').format(review.createdAt);
     }
@@ -678,19 +798,17 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
             color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Row(
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor:
-                    const Color(0xFFd4af37).withOpacity(0.2),
+                backgroundColor: const Color(0xFFd4af37).withOpacity(0.2),
                 child: Text(
                   review.userName.isNotEmpty
                       ? review.userName[0].toUpperCase()
@@ -708,9 +826,31 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      review.userName,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isMine ? 'Review Anda' : review.userName,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        if (isMine)
+                          IconButton(
+                            onPressed: _showReviewDialog,
+                            tooltip: 'Perbarui Ulasan Anda',
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: Color(0xFF884513),
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          ),
+                      ],
                     ),
 
                     Row(
@@ -718,9 +858,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                         ...List.generate(
                           5,
                           (i) => Icon(
-                            i < review.rating
-                                ? Icons.star
-                                : Icons.star_border,
+                            i < review.rating ? Icons.star : Icons.star_border,
                             color: Colors.amber,
                             size: 16,
                           ),
@@ -729,7 +867,9 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
                         Text(
                           formattedDate,
                           style: TextStyle(
-                              fontSize: 12, color: Colors.grey[600]),
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
                         ),
                       ],
                     ),
@@ -741,8 +881,7 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
 
           const SizedBox(height: 12),
 
-          if (review.komentar != null &&
-              review.komentar!.isNotEmpty)
+          if (review.komentar != null && review.komentar!.isNotEmpty)
             Text(
               review.komentar!,
               style: const TextStyle(fontSize: 15, height: 1.5),
@@ -752,17 +891,19 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
     );
   }
 
-  Widget _infoCard({required IconData icon, required String title, required String content, VoidCallback? onTap}) {
+  Widget _infoCard({
+    required IconData icon,
+    required String title,
+    required String content,
+    VoidCallback? onTap,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-          )
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10),
         ],
       ),
       child: Row(
@@ -775,15 +916,16 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey[600])),
+                  Text(
+                    title,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                   const SizedBox(height: 4),
                   Text(content),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -809,32 +951,72 @@ class _VendorDetailPageState extends State<VendorDetailPage> {
             color: Colors.black.withOpacity(0.05),
             offset: const Offset(0, -4),
             blurRadius: 10,
-          )
-        ]
+          ),
+        ],
       ),
+
       child: SafeArea(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => BookingFormPage(vendor: widget.vendor))
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFd4af37),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)
+        child: Row(
+          children: [
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Tooltip(
+                message: isBookmarked ? 'Hapus Bookmark' : 'Bookmark Hajatan',
+                child: ElevatedButton(
+                  onPressed: isLoadingBookmark ? null : _toggleBookmark,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFd4af37),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Icon(
+                    isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                  ),
+                ),
+              ),
             ),
-          ),
-          child: const Text(
-            'Sewa Vendor Sekarang',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white
-            )
-          ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BookingFormPage(
+                          vendor: widget.vendor,
+                          layananList: layananList,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFd4af37),
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size.fromHeight(56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Sewa Vendor Sekarang',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

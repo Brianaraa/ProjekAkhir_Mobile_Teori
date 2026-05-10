@@ -252,7 +252,7 @@ class _BookmarkPageState extends State<BookmarkPage> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
-            color: Color(0xFF884513),
+            color: Color(0xFF352010),
           ),
         ),
         centerTitle: true,
