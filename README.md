@@ -105,8 +105,7 @@ lib/
 
 ---
 
-## ✉️ Contact & Developer Profile
+## ✉️ Developer Profile
 
 Designed & Developed by:
-* **Your Name** - [GitHub Profile](https://github.com/yourusername) / [LinkedIn](https://linkedin.com/in/yourusername)
-* UPN Veteran Yogyakarta - Informatics Engineering
+Aulia Putri Naharani & Brian Zahran Putra
