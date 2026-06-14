@@ -266,7 +266,7 @@ class _HomePageState extends State<HomePage> {
               _buildHeader(name),
               const SizedBox(height: 24),
 
-              // _buildAIInsights(),
+              _buildAIInsights(),
               const SizedBox(height: 24),
 
               _buildDateCard(),

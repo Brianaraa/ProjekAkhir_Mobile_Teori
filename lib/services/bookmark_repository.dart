@@ -70,7 +70,7 @@ class BookmarkRepository {
   Future<bool> checkIsBookmarked(String vendorId) async {
     var connectivityResult = await (Connectivity().checkConnectivity());
     
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       final localData = await local.getAll();
       return localData.any((element) => element.vendorId == vendorId);
     }

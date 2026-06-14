@@ -4,6 +4,7 @@ import 'package:projek_akhir/auth/biometric.dart';
 import 'package:projek_akhir/pages/main_navigation.dart';
 import 'package:projek_akhir/pages/sign_up.dart';
 import 'package:projek_akhir/services/user_service.dart';
+import 'package:projek_akhir/admin/admin_login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -393,6 +394,28 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdminLoginPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.admin_panel_settings, color: Color(0xFFd4af37)),
+                    label: const Text(
+                      "Masuk sebagai Admin",
+                      style: TextStyle(
+                        color: Color(0xFFd4af37),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

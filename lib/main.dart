@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:projek_akhir/auth/auth_gate.dart';
+import 'package:projek_akhir/pages/splashscreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:projek_akhir/services/notification_service.dart';
-import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async{
@@ -28,7 +27,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AuthGate(),
+      home: const SplashScreen(),
     );
   }
 }

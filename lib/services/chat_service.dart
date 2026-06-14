@@ -7,7 +7,6 @@ class ChatService {
 
   ChatService() {
   final apiKey = dotenv.env['GEMINI_API_KEY'] ?? 'KUNCI_TIDAK_DITEMUKAN';
-  print('Debug API Key: $apiKey'); // Lihat di konsol apakah kuncinya muncul
   
   _model = GenerativeModel(
     model: 'gemini-flash-latest',

@@ -20,11 +20,25 @@ class _ProfilePageState extends State<ProfilePage> {
   String _userEmail = '';
   String? _profileImageUrl;
   bool _isUploading = false;
+  bool _isBiometricEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadBiometricSettings();
+  }
+
+  Future<void> _loadBiometricSettings() async {
+    final val = await AuthStorage.isBiometricEnabled();
+    if (mounted) {
+      setState(() => _isBiometricEnabled = val);
+    }
+  }
+
+  Future<void> _toggleBiometric(bool val) async {
+    await AuthStorage.setBiometric(val);
+    setState(() => _isBiometricEnabled = val);
   }
 
   Future<void> _loadUserData() async {
@@ -503,6 +517,30 @@ class _ProfilePageState extends State<ProfilePage> {
                 iconBgColor: const Color(0xFFd4af37).withOpacity(0.15),
                 title: "Bookmark",
                 onTap: _goToBookmarkPage,
+              ),
+
+              const SizedBox(height: 12),
+
+              // Switch Biometrik
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: SwitchListTile(
+                  title: const Text('Login Biometrik', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  secondary: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFd4af37).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.fingerprint, color: Color(0xFFd4af37)),
+                  ),
+                  value: _isBiometricEnabled,
+                  activeColor: const Color(0xFFd4af37),
+                  onChanged: _toggleBiometric,
+                ),
               ),
 
               const SizedBox(height: 40),
