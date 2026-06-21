@@ -3,9 +3,13 @@ import 'package:projek_akhir/pages/splashscreen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:projek_akhir/services/notification_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi locale Indonesia untuk intl (digunakan oleh ChatPage date picker)
+  await initializeDateFormatting('id_ID', null);
 
   // Load environment variables dari file .env
   await dotenv.load(fileName: '.env');

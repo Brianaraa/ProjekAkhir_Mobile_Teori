@@ -1,35 +1,19 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:projek_akhir/services/agents/agent_orchestrator.dart';
 
+/// ChatService — thin wrapper untuk backward compatibility.
+///
+/// Sebelumnya memanggil Gemini langsung (single agent).
+/// Sekarang mendelegasikan ke [HagatiAgentOrchestrator] yang
+/// mengelola dua agen: WetonAdvisorAgent & CustomsSpecialistAgent.
+///
+/// Dipakai oleh HomePage._generateAISummary() untuk ringkasan harian.
 class ChatService {
-  late final GenerativeModel _model;
-  late final ChatSession _chat;
+  final _orchestrator = HagatiAgentOrchestrator();
 
-  ChatService() {
-  final apiKey = dotenv.env['GEMINI_API_KEY'] ?? 'KUNCI_TIDAK_DITEMUKAN';
-  
-  _model = GenerativeModel(
-    model: 'gemini-flash-latest',
-    apiKey: apiKey,
-      systemInstruction: Content.system(
-        '''Kamu adalah Bli-AI, asisten digital yang ahli dalam adat istiadat 
-        Jawa, Sunda, Bali, Batak, dan Bugis. Kamu membantu pengguna merencanakan 
-        hajatan (pernikahan, sunatan, selamatan, mitoni) dengan memberikan 
-        informasi tentang prosesi adat, hari baik, estimasi budget, dan 
-        rekomendasi vendor. Jawab dalam Bahasa Indonesia yang ramah dan sopan. 
-        Jika ditanya di luar topik hajatan dan adat, arahkan kembali ke topik tersebut.'''
-      ),
-    );
-    _chat = _model.startChat();
-  }
-
+  /// Kirim pesan dan kembalikan teks respons saja (tanpa metadata agen).
+  /// Untuk kebutuhan yang butuh metadata agen lengkap, gunakan orchestrator langsung.
   Future<String> sendMessage(String message) async {
-    try {
-      final response = await _chat.sendMessage(Content.text(message));
-      return response.text ?? 'Maaf, Bli-AI sedang kehilangan kata-kata.';
-    } catch (e) {
-      print('Gemini Error: $e');
-      return 'Maaf King, ada kendala koneksi ke otak Bli-AI. Coba lagi nanti ya!';
-    }
+    final response = await _orchestrator.route(message);
+    return response.text;
   }
-}
+}

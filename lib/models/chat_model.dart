@@ -6,11 +6,17 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isLoading;
 
+  /// Label agen yang merespons, misalnya:
+  /// '🔮 Weton Advisor  •  🔧 Tool Active' atau '🎭 Customs Specialist'.
+  /// Null jika pesan dari user atau sedang loading.
+  final String? agentLabel;
+
   ChatMessage({
     required this.text,
     required this.sender,
     DateTime? timestamp,
     this.isLoading = false,
+    this.agentLabel,
   }) : timestamp = timestamp ?? DateTime.now();
 
   String get formattedTime {

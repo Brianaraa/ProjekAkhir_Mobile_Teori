@@ -209,6 +209,7 @@ class _HomePageState extends State<HomePage> {
 
     final prompt =
         '''
+    [INSIGHT_SUMMARY]
     Hari ini adalah weton $_hariJawaHariIni $_pasaranHariIni, tanggal $_hijriyahDate, dengan cuaca $cuacaStr. 
     Terdapat ${_vendors.length} vendor yang tersedia. 
     $countdownStr

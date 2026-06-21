@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projek_akhir/models/chat_model.dart';
-import 'package:projek_akhir/services/chat_service.dart';
+import 'package:projek_akhir/services/agents/agent_orchestrator.dart';
+import 'package:intl/intl.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -10,31 +11,39 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final _chatService = ChatService();
+  /// [Konsep 1] Gunakan orchestrator langsung — bukan ChatService —
+  /// agar kita bisa mendapatkan metadata agen (label, tool usage).
+  final _orchestrator = HagatiAgentOrchestrator();
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
 
-  List<ChatMessage> _messages = [];
+  final List<ChatMessage> _messages = [];
   bool _isTyping = false;
 
   final List<String> _suggestions = [
     'Apa itu prosesi midodareni?',
     'Estimasi budget nikahan 200 orang?',
-    'Hari baik pernikahan adat Jawa?',
-    'Apa saja prosesi sunatan adat?',
+    'Weton Sabtu Legi itu bagaimana?',
+    'Apa saja prosesi akad nikah adat Jawa?',
   ];
 
   @override
   void initState() {
     super.initState();
-    // Pesan pembuka dari Bli-AI
     _messages.add(ChatMessage(
       text:
-          'Halo! Saya Bli-AI, asisten hajatan digitalmu 🙏\n\nSaya bisa membantu kamu soal:\n• Prosesi & tata cara adat\n• Menentukan hari baik\n• Estimasi budget hajatan\n• Rekomendasi persiapan\n\nAda yang bisa saya bantu?',
+          'Halo! Saya Bli-AI, asisten hajatan digitalmu 🙏\n\n'
+          'Saya dilengkapi sistem **Multi-Agent**:\n'
+          '• 🔮 **Weton Advisor** — hitung weton & hari baik pernikahan\n'
+          '• 🎭 **Customs Specialist** — tanya-jawab prosesi adat\n\n'
+          'Saya otomatis mendeteksi topikmu dan mengalihkan ke agen yang tepat.\n'
+          'Ada yang bisa dibantu?',
       sender: MessageSender.ai,
+      agentLabel: '🤖 HAGATI Multi-Agent System',
     ));
   }
 
+  // ── Kirim pesan via orchestrator ──────────────────────────────────────
   Future<void> _sendMessage([String? text]) async {
     final msg = (text ?? _inputController.text).trim();
     if (msg.isEmpty) return;
@@ -43,7 +52,6 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() {
       _messages.add(ChatMessage(text: msg, sender: MessageSender.user));
-      // Tambah bubble loading AI
       _messages.add(ChatMessage(
         text: '',
         sender: MessageSender.ai,
@@ -54,16 +62,62 @@ class _ChatPageState extends State<ChatPage> {
 
     _scrollToBottom();
 
-    final response = await _chatService.sendMessage(msg);
+    // ── Routing ke agen yang tepat ──────────────────────────────────────
+    final agentResponse = await _orchestrator.route(msg);
 
     setState(() {
-      // Hapus bubble loading, ganti dengan respons asli
-      _messages.removeLast();
-      _messages.add(ChatMessage(text: response, sender: MessageSender.ai));
+      _messages.removeLast(); // hapus loading bubble
+      _messages.add(ChatMessage(
+        text: agentResponse.text,
+        sender: MessageSender.ai,
+        agentLabel: agentResponse.agentLabel, // label agen untuk UI
+      ));
       _isTyping = false;
     });
 
     _scrollToBottom();
+  }
+
+  // ── Date Picker untuk weton input ─────────────────────────────────────
+  /// Membuka Flutter date picker. Setelah user memilih, mengirimkan
+  /// pesan terstruktur `[WETON_DATE:YYYY-MM-DD]` ke orchestrator.
+  /// Orchestrator akan mendeteksi format ini dan langsung routing ke
+  /// WetonAdvisorAgent → Tool `hitungWetonJawa` akan dipanggil.
+  Future<void> _openDatePicker() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 30)),
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+      helpText: 'Pilih Tanggal Pernikahan',
+      confirmText: 'Cek Weton',
+      cancelText: 'Batal',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFd4af37),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF1C1C1C),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      // Format tanggal yang bisa dibaca manusia untuk tampilan di bubble user
+      final readableDate = DateFormat('d MMMM yyyy', 'id_ID').format(picked);
+      // Format YYYY-MM-DD untuk diparse oleh tool hitungWetonJawa
+      final isoDate = DateFormat('yyyy-MM-dd').format(picked);
+
+      // Kirim dengan format khusus yang dikenali orchestrator
+      await _sendMessage(
+        '📅 Cek weton tanggal $readableDate [WETON_DATE:$isoDate]',
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -91,7 +145,11 @@ class _ChatPageState extends State<ChatPage> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFd4af37),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFd4af37), Color(0xFF8B6914)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.auto_awesome,
@@ -109,7 +167,7 @@ class _ChatPageState extends State<ChatPage> {
                       color: Color(0xFF1C1C1C)),
                 ),
                 Text(
-                  _isTyping ? 'sedang mengetik...' : 'Heritage Guide',
+                  _isTyping ? 'agen sedang berpikir...' : 'Multi-Agent Heritage System',
                   style: TextStyle(
                       fontSize: 11,
                       color: _isTyping
@@ -120,10 +178,36 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ],
         ),
+        // Badge multi-agent di kanan AppBar
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFd4af37).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: const Color(0xFFd4af37).withValues(alpha: 0.4)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.hub_outlined, size: 12, color: Color(0xFF8B6914)),
+                SizedBox(width: 4),
+                Text(
+                  '2 Agents',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF8B6914),
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // ── CHAT LIST ──
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -133,11 +217,7 @@ class _ChatPageState extends State<ChatPage> {
               itemBuilder: (context, i) => _buildBubble(_messages[i]),
             ),
           ),
-
-          // ── SUGGESTED QUESTIONS (hanya jika belum ada percakapan) ──
           if (_messages.length <= 1) _buildSuggestions(),
-
-          // ── INPUT BAR ──
           _buildInputBar(),
         ],
       ),
@@ -159,7 +239,11 @@ class _ChatPageState extends State<ChatPage> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: const Color(0xFFd4af37),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFd4af37), Color(0xFF8B6914)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.auto_awesome,
@@ -174,6 +258,29 @@ class _ChatPageState extends State<ChatPage> {
                   ? CrossAxisAlignment.end
                   : CrossAxisAlignment.start,
               children: [
+                // ── Agent label badge (hanya untuk pesan AI) ───────────
+                if (!isUser && msg.agentLabel != null && !msg.isLoading) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _agentLabelColor(msg.agentLabel!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      msg.agentLabel!,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+
+                // ── Chat bubble ─────────────────────────────────────────
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 10),
@@ -189,7 +296,7 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       )
@@ -224,6 +331,16 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  /// Warna badge berdasarkan agen yang aktif.
+  Color _agentLabelColor(String label) {
+    if (label.contains('Weton')) {
+      return label.contains('Tool')
+          ? const Color(0xFF6B3FA0) // ungu lebih dalam saat tool aktif
+          : const Color(0xFF8B5CF6); // ungu untuk weton advisor
+    }
+    return const Color(0xFF2D7D6F); // hijau teal untuk customs specialist
+  }
+
   Widget _loadingDots() {
     return const SizedBox(
       width: 40,
@@ -252,10 +369,10 @@ class _ChatPageState extends State<ChatPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFd4af37).withOpacity(0.1),
+                      color: const Color(0xFFd4af37).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: const Color(0xFFd4af37).withOpacity(0.4)),
+                          color: const Color(0xFFd4af37).withValues(alpha: 0.4)),
                     ),
                     child: Text(
                       s,
@@ -276,7 +393,7 @@ class _ChatPageState extends State<ChatPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           )
@@ -284,13 +401,40 @@ class _ChatPageState extends State<ChatPage> {
       ),
       child: Row(
         children: [
+          // ── Tombol date picker kalender ─────────────────────────────
+          GestureDetector(
+            onTap: _isTyping ? null : _openDatePicker,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _isTyping
+                    ? Colors.grey[200]
+                    : const Color(0xFFd4af37).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _isTyping
+                      ? Colors.grey[300]!
+                      : const Color(0xFFd4af37).withValues(alpha: 0.5),
+                ),
+              ),
+              child: Icon(
+                Icons.calendar_month_outlined,
+                color: _isTyping ? Colors.grey : const Color(0xFF8B6914),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
           Expanded(
             child: TextField(
               controller: _inputController,
               textCapitalization: TextCapitalization.sentences,
               maxLines: null,
               decoration: InputDecoration(
-                hintText: 'Tanya Bli-AI...',
+                hintText: 'Tanya soal adat atau weton...',
                 hintStyle:
                     const TextStyle(color: Colors.grey, fontSize: 14),
                 filled: true,
@@ -343,7 +487,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
-// Animasi loading dots
+// ── Animasi loading dots ──────────────────────────────────────────────────
 class _Dot extends StatefulWidget {
   final int delay;
   const _Dot({required this.delay});
